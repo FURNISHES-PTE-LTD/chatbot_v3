@@ -10,12 +10,14 @@ import { useState } from "react"
 const DEFAULT_WORKSPACE = { id: "ws-1", name: "Home Renovation" }
 const DEFAULT_PROJECT = { id: "proj-1a", name: "Living Room" }
 
+export const DEMO_RECENT_ID = "recent-demo"
+
 export function DashboardLayout() {
   const [activeItem, setActiveItem] = useState("recent-living-room")
   const [activeNavId, setActiveNavId] = useState<NavItemId>("about")
   const [tabs, setTabs] = useState([
     { id: "tab-1", title: "Project 1", section: "recent-living-room" },
-    { id: "tab-2", title: "Project 2", section: "saved-plans" },
+    { id: "tab-2", title: "Project 2", section: "search" },
   ])
   const [activeTabId, setActiveTabId] = useState("tab-1")
   const [isRightSidebarVisible, setIsRightSidebarVisible] = useState(true)
@@ -31,10 +33,12 @@ export function DashboardLayout() {
     tagline: "[the Assistant]",
   })
   const [recents, setRecents] = useState<{ id: string; label: string }[]>([
+    { id: DEMO_RECENT_ID, label: "Design brief demo" },
     { id: "recent-living-room", label: "Living Room Redesign" },
     { id: "recent-sofa-ideas", label: "Sofa ideas & layout" },
     { id: "recent-color-palette", label: "Color palette exploration" },
   ])
+  const [pendingChatMessage, setPendingChatMessage] = useState<string | null>(null)
 
   const handleSelectWorkspaceProject = (workspace: { id: string; name: string }, project: { id: string; name: string }) => {
     setCurrentWorkspace(workspace)
@@ -50,19 +54,19 @@ export function DashboardLayout() {
     const newTab = {
       id: `tab-${Date.now()}`,
       title: `Project ${tabs.length + 1}`,
-      section: "saved-plans",
+      section: "search",
     }
     setTabs([...tabs, newTab])
     setActiveTabId(newTab.id)
-    setActiveItem("saved-plans")
+    setActiveItem("search")
   }
 
   const closeTab = (tabId: string) => {
     const newTabs = tabs.filter((tab) => tab.id !== tabId)
     if (newTabs.length === 0) {
-      setTabs([{ id: "tab-1", title: "Project 1", section: "saved-plans" }])
+      setTabs([{ id: "tab-1", title: "Project 1", section: "search" }])
       setActiveTabId("tab-1")
-      setActiveItem("saved-plans")
+      setActiveItem("search")
     } else {
       setTabs(newTabs)
       if (activeTabId === tabId) {
@@ -82,11 +86,6 @@ export function DashboardLayout() {
       setActiveItem(newId)
       setTabs((t) => t.map((tab) => (tab.id === activeTabId ? { ...tab, section: newId } : tab)))
       return
-    }
-
-    // Handle subdirectory items with parent context
-    if (id === "trending" || id === "collections" || id === "others") {
-      itemId = `explore-${id}`
     }
 
     if (showAssistantPicker) {
@@ -172,6 +171,22 @@ export function DashboardLayout() {
             showAssistantPicker={showAssistantPicker}
             onSelectAssistant={handleSelectAssistant}
             selectedAssistant={selectedAssistant}
+            pendingChatMessage={pendingChatMessage}
+            onClearPendingChatMessage={() => setPendingChatMessage(null)}
+            onEditInChatFromFiles={(title) => {
+              setPendingChatMessage(`Can you adjust the ${title}?`)
+              const newId = `recent-${Date.now()}`
+              setRecents((prev) => [{ id: newId, label: "New Chat" }, ...prev])
+              setActiveItem(newId)
+              setTabs((t) => t.map((tab) => (tab.id === activeTabId ? { ...tab, section: newId } : tab)))
+            }}
+            onSendToChatFromDiscover={(text) => {
+              setPendingChatMessage(text)
+              const newId = `recent-${Date.now()}`
+              setRecents((prev) => [{ id: newId, label: "New Chat" }, ...prev])
+              setActiveItem(newId)
+              setTabs((t) => t.map((tab) => (tab.id === activeTabId ? { ...tab, section: newId } : tab)))
+            }}
           />
         </div>
 

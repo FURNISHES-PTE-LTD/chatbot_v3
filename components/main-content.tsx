@@ -6,12 +6,6 @@ import {
   Share2,
   Search,
   Package,
-  BookmarkCheck,
-  LayoutGrid,
-  Palette,
-  DollarSign,
-  CheckCircle,
-  FileText,
   FolderOpen,
   Paperclip,
   MessageSquarePlus,
@@ -32,7 +26,14 @@ import {
   LayoutDashboard,
   ChevronLeft,
   Sparkles,
+  Check,
+  Bookmark,
+  Edit3,
+  GitBranch,
 } from "lucide-react"
+import { FilesView } from "@/components/files-view"
+import { DiscoverView } from "@/components/discover-view"
+import { PlaybookView } from "@/components/playbook-view"
 import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -62,9 +63,54 @@ interface MainContentProps {
   onSelectAssistant?: (assistant: { id: string; name: string; tagline: string }) => void
   onCloseAssistantPicker?: () => void
   selectedAssistant?: { id: string; name: string; tagline: string }
+  /** When user clicks "Edit in chat" from Files view, switch to chat and pre-fill this message. */
+  pendingChatMessage?: string | null
+  onClearPendingChatMessage?: () => void
+  /** Called from Files view when user clicks "Edit in chat"; parent should switch to chat and set pendingChatMessage. */
+  onEditInChatFromFiles?: (title: string) => void
+  /** Called from Discover view when user clicks a suggestion or "explore next"; parent should switch to chat and set pendingChatMessage. */
+  onSendToChatFromDiscover?: (text: string) => void
 }
 
 type ChatMessage = { role: "user" | "assistant"; content: string }
+
+const DEMO_RECENT_ID = "recent-demo"
+
+/** Extended message shape for demo only (sources, extraction, taskCard, feedback). */
+type DemoMessage = ChatMessage & {
+  id?: number
+  sources?: { text: string; field: string }[]
+  extraction?: { field: string; value: string }
+  type?: "text" | "taskCard" | "feedback"
+  taskText?: string
+  taskStatus?: "complete" | "pending"
+  bookmarked?: boolean
+}
+
+const MOCK_DEMO_MESSAGES: DemoMessage[] = [
+  { id: 1, role: "assistant", content: "Good morning! I'm Eva, your design planning assistant. What room are you working on today?" },
+  { id: 2, role: "user", content: "I'm thinking about redoing my living room", sources: [{ text: "living room", field: "roomType" }] },
+  { id: 3, role: "assistant", content: "Great — I've noted <hl>living room</hl> as your project space. Do you have a style direction in mind?", extraction: { field: "Room Type", value: "Living Room" } },
+  { id: 4, role: "user", content: "Something minimalist, warm tones, big comfy sofa", sources: [{ text: "minimalist", field: "style" }, { text: "warm tones", field: "color" }, { text: "sofa", field: "furniture" }] },
+  { id: 5, role: "assistant", content: "Capturing <hl>minimalist</hl> as your style and <hl>sofa</hl> as a must-have. Budget range?", extraction: { field: "Style + Furniture", value: "Minimalist, Sofa" } },
+  { id: 6, role: "user", content: "Around 4k, nothing farmhouse please." },
+  { id: 7, role: "assistant", content: "Got it — <hl>$4,000</hl> budget, avoiding <hl>farmhouse</hl>. I've updated your brief.", extraction: { field: "Budget + Exclusion", value: "$4,000 / −Farmhouse" } },
+  { id: 8, role: "assistant", type: "taskCard", content: "", taskText: "Living Room Design Brief — style, budget, furniture captured", taskStatus: "complete", bookmarked: true },
+  { id: 9, role: "assistant", type: "feedback", content: "Does this look right? You can adjust the layout or add more furniture." },
+]
+
+function parseHighlightedContent(text: string) {
+  const parts = text.split(/(<hl>.*?<\/hl>)/g)
+  return parts.map((p, i) =>
+    p.startsWith("<hl>") ? (
+      <span key={i} className="bg-primary/15 text-primary px-1 py-0.5 rounded font-semibold text-sm">
+        {p.replace(/<\/?hl>/g, "")}
+      </span>
+    ) : (
+      <span key={i}>{p}</span>
+    )
+  )
+}
 
 const MOCK_ASSISTANTS: AssistantOption[] = [
   {
@@ -159,6 +205,10 @@ export function MainContent({
   showAssistantPicker = false,
   onSelectAssistant,
   selectedAssistant,
+  pendingChatMessage = null,
+  onClearPendingChatMessage,
+  onEditInChatFromFiles,
+  onSendToChatFromDiscover,
 }: MainContentProps) {
   const [isSaved, setIsSaved] = useState(false)
   const [selectedRooms, setSelectedRooms] = useState<string[]>([])
@@ -171,6 +221,15 @@ export function MainContent({
     setSelectedWorkspaceForView(null)
   }, [workspaceListKey])
 
+  // When switching to chat with a pending message (e.g. from "Edit in chat" in Files view), pre-fill input
+  const isChatViewForPending = activeItem === "new-chat" || activeItem.startsWith("recent-")
+  useEffect(() => {
+    if (isChatViewForPending && pendingChatMessage && onClearPendingChatMessage) {
+      setChatInputValue(pendingChatMessage)
+      onClearPendingChatMessage()
+    }
+  }, [pendingChatMessage, isChatViewForPending, onClearPendingChatMessage])
+
   const chatKey =
     currentWorkspace && currentProject
       ? `${currentWorkspace.id}-${currentProject.id}`
@@ -178,6 +237,8 @@ export function MainContent({
         ? activeItem
         : "default"
   const chatMessages = chatMessagesByKey[chatKey] || []
+  const isDemoChat = activeItem === DEMO_RECENT_ID
+  const messagesToShow: (ChatMessage | DemoMessage)[] = isDemoChat ? MOCK_DEMO_MESSAGES : chatMessages
   const [assistantPickerStyleFilter, setAssistantPickerStyleFilter] = useState<AssistantStyleFocus | "">("")
   const [assistantPickerTraits, setAssistantPickerTraits] = useState<string[]>([])
 
@@ -200,6 +261,7 @@ export function MainContent({
 
   const handleSendChatMessage = () => {
     if (!chatInputValue.trim()) return
+    if (isDemoChat) return
     const key = chatKey
     const userMsg: ChatMessage = { role: "user", content: chatInputValue.trim() }
     setChatMessagesByKey((prev) => ({ ...prev, [key]: [...(prev[key] || []), userMsg] }))
@@ -269,17 +331,9 @@ export function MainContent({
       "new-chat": MessageSquarePlus,
       search: Search,
       files: FolderOpen,
+      discover: Sparkles,
+      playbook: GitBranch,
       workspace: LayoutDashboard,
-      explore: Package,
-      "explore-trending": Package,
-      "explore-collections": Package,
-      "explore-others": Package,
-      "saved-plans": BookmarkCheck,
-      "room-planner": LayoutGrid,
-      style: Palette,
-      budget: DollarSign,
-      validate: CheckCircle,
-      "room-report": FileText,
       cart: ShoppingCart,
       project: Home,
       community: TrendingUp,
@@ -291,7 +345,7 @@ export function MainContent({
         ? LayoutDashboard
         : activeItem.startsWith("recent-")
           ? Clock
-          : iconMap[activeItem] || BookmarkCheck
+          : iconMap[activeItem] || Package
     return <IconComponent className="h-3.5 w-3.5 text-muted-foreground" />
   }
 
@@ -299,15 +353,13 @@ export function MainContent({
     if (currentWorkspace && currentProject) {
       return `${currentWorkspace.name} / ${currentProject.name}`
     }
-    if (activeItem === "explore-trending") return "Explore / Trending"
-    if (activeItem === "explore-collections") return "Explore / Collections"
-    if (activeItem === "explore-others") return "Explore / Others"
     if (activeItem.startsWith("recent-") && recents.length > 0) {
       const found = recents.find((r) => r.id === activeItem)
       if (found) return found.label
     }
     if (activeItem === "new-chat") return "+ New Chat"
     if (activeItem === "workspace") return "Workspace"
+    if (activeItem === "playbook") return "Playbook"
 
     // Convert kebab-case to Title Case
     return activeItem
@@ -337,7 +389,7 @@ export function MainContent({
   const renderChatView = (title: string) => (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col">
-        {chatMessages.length === 0 ? (
+        {messagesToShow.length === 0 ? (
           activeItem === "new-chat" || activeItem.startsWith("recent-") ? (
             <div className="flex-1 flex flex-col items-center justify-center py-8 px-4 text-center">
               <Avatar className="h-14 w-14 bg-primary mb-4">
@@ -375,36 +427,96 @@ export function MainContent({
             </div>
           )
         ) : (
-          chatMessages.map((msg, i) => (
-            <div
-              key={i}
-              className={cn(
-                "flex gap-2.5",
-                msg.role === "user" ? "flex-row-reverse" : "",
-              )}
-            >
-              <Avatar
-                className={cn(
-                  "h-7 w-7 shrink-0",
-                  msg.role === "user" ? "bg-accent" : "bg-primary",
-                )}
-              >
-                <AvatarFallback className={msg.role === "user" ? "bg-accent text-accent-foreground text-[10px]" : "bg-primary text-primary-foreground text-[10px]"}>
-                  {msg.role === "user" ? "U" : "E"}
-                </AvatarFallback>
-              </Avatar>
+          messagesToShow.map((msg, i) => {
+            const demoMsg = msg as DemoMessage
+            if (demoMsg.type === "taskCard") {
+              return (
+                <div key={demoMsg.id ?? i} className="flex gap-2.5">
+                  <Avatar className="h-7 w-7 shrink-0 bg-primary">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">E</AvatarFallback>
+                  </Avatar>
+                  <div className="rounded-lg px-3 py-2 max-w-[85%] text-sm bg-card border border-border flex items-start gap-2.5">
+                    <div className={cn("w-5 h-5 rounded-full mt-0.5 flex-shrink-0 flex items-center justify-center", demoMsg.taskStatus === "complete" ? "bg-emerald-100" : "bg-primary/10")}>
+                      <Check className={cn("w-3 h-3", demoMsg.taskStatus === "complete" ? "text-emerald-600" : "text-primary")} />
+                    </div>
+                    <span className="flex-1 text-foreground leading-relaxed">{demoMsg.taskText}</span>
+                    <button type="button" className="p-0 bg-transparent border-none cursor-pointer mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors">
+                      <Bookmark className={cn("w-4 h-4", demoMsg.bookmarked && "fill-primary text-primary")} />
+                    </button>
+                  </div>
+                </div>
+              )
+            }
+            if (demoMsg.type === "feedback") {
+              return (
+                <div key={demoMsg.id ?? i} className="flex gap-2.5">
+                  <Avatar className="h-7 w-7 shrink-0 bg-primary">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">E</AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col gap-2 max-w-[85%]">
+                    <div className="rounded-lg px-3 py-2 text-sm bg-muted text-foreground">
+                      {demoMsg.content}
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors cursor-pointer">
+                        <Check className="w-3 h-3" /> Looks good
+                      </button>
+                      <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-muted-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer">
+                        <Edit3 className="w-3 h-3" /> Adjust
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            }
+            const isUser = msg.role === "user"
+            return (
               <div
+                key={demoMsg.id ?? i}
                 className={cn(
-                  "rounded-lg px-3 py-2 max-w-[85%] text-sm",
-                  msg.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-foreground",
+                  "flex gap-2.5",
+                  isUser ? "flex-row-reverse" : "",
                 )}
               >
-                {msg.content}
+                <Avatar
+                  className={cn(
+                    "h-7 w-7 shrink-0",
+                    isUser ? "bg-accent" : "bg-primary",
+                  )}
+                >
+                  <AvatarFallback className={isUser ? "bg-accent text-accent-foreground text-[10px]" : "bg-primary text-primary-foreground text-[10px]"}>
+                    {isUser ? "U" : "E"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className={cn("flex flex-col gap-1", isUser ? "items-end" : "items-start")}>
+                  <div
+                    className={cn(
+                      "rounded-lg px-3 py-2 text-sm",
+                      isUser
+                        ? "bg-primary text-primary-foreground max-w-[85%] w-fit min-w-[10rem]"
+                        : "bg-muted text-foreground max-w-[85%]",
+                    )}
+                  >
+                    {isUser ? msg.content : parseHighlightedContent(msg.content)}
+                  </div>
+                  {!isUser && demoMsg.extraction && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100 text-xs text-emerald-700 font-medium w-fit">
+                      <Check className="w-3 h-3 text-emerald-500" /> <span className="text-emerald-600 font-normal">Captured:</span> {demoMsg.extraction.value}
+                    </div>
+                  )}
+                  {isUser && demoMsg.sources && demoMsg.sources.length > 0 && (
+                    <div className="flex gap-1 flex-wrap justify-end">
+                      {demoMsg.sources.map((s, j) => (
+                        <span key={j} className="text-[10px] text-primary bg-primary/5 rounded px-1.5 py-0.5 font-medium border border-primary/10">
+                          ↗ {s.text}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            )
+          })
         )}
       </div>
       <div className="shrink-0 flex flex-col gap-3 mt-16">
@@ -442,6 +554,9 @@ export function MainContent({
             <Send className="h-4 w-4" />
           </button>
         </div>
+        <p className="text-xs text-muted-foreground text-center">
+          Describe your space or ask for ideas—we&apos;re here to help.
+        </p>
       </div>
     </div>
   )
@@ -484,7 +599,7 @@ export function MainContent({
                           {msg.role === "user" ? "U" : "E"}
                         </AvatarFallback>
                       </Avatar>
-                      <div className={cn("rounded-lg px-2.5 py-1.5 max-w-[85%] text-xs", msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")}>
+                      <div className={cn("rounded-lg px-2.5 py-1.5 text-xs", msg.role === "user" ? "bg-primary text-primary-foreground max-w-[85%] w-fit min-w-[10rem]" : "bg-muted text-foreground max-w-[85%]")}>
                         {msg.content}
                       </div>
                     </div>
@@ -616,19 +731,17 @@ export function MainContent({
     }
 
     if (activeItem === "files") {
+      return <FilesView onEditInChat={onEditInChatFromFiles} />
+    }
+
+    if (activeItem === "discover") {
+      return <DiscoverView onSendToChat={onSendToChatFromDiscover} />
+    }
+
+    if (activeItem === "playbook") {
       return (
-        <div>
-          <h1 className="text-base font-semibold text-foreground mb-4">Files</h1>
-          <p className="mb-4 text-xs text-muted-foreground">Your project files and uploads</p>
-          <div className="space-y-2">
-            <div className="rounded border border-border bg-card p-4 flex items-center gap-3">
-              <FolderOpen className="h-5 w-5 text-muted-foreground shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground">No files yet</p>
-                <p className="text-xs text-muted-foreground">Upload floor plans, images, or documents to get started.</p>
-              </div>
-            </div>
-          </div>
+        <div className="flex flex-col h-full min-h-0 -m-6">
+          <PlaybookView />
         </div>
       )
     }
@@ -647,233 +760,7 @@ export function MainContent({
       )
     }
 
-    if (activeItem === "explore-trending" || activeItem === "explore-collections" || activeItem === "explore-others") {
-      return (
-        <div>
-          <h1 className="text-base font-semibold text-foreground">{getBreadcrumbText()}</h1>
-          <p className="mb-4 text-xs text-muted-foreground">Browse curated collections</p>
-          <div className="grid gap-3 md:grid-cols-3">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="rounded border border-border bg-card p-3">
-                <div className="mb-2 h-32 rounded bg-secondary/30" />
-                <h4 className="text-xs font-medium">Product {i}</h4>
-                <p className="text-[10px] text-muted-foreground">$299.00</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )
-    }
-
     switch (activeItem) {
-      case "saved-plans":
-        return (
-          <div className="rounded border border-border bg-card p-4">
-            <h1 className="text-base font-semibold text-foreground">Saved Plans</h1>
-            <p className="mb-4 text-xs text-muted-foreground">View and manage your saved design plans</p>
-            <div className="grid gap-3 md:grid-cols-2">
-              {[
-                { name: "Living Room Modern", date: "Dec 15, 2024", status: "In Progress" },
-                { name: "Bedroom Retreat", date: "Dec 10, 2024", status: "Completed" },
-                { name: "Office Workspace", date: "Dec 5, 2024", status: "Draft" },
-              ].map((plan) => (
-                <div key={plan.name} className="rounded border border-border bg-background p-4">
-                  <h3 className="text-sm font-semibold text-foreground">{plan.name}</h3>
-                  <p className="text-[10px] text-muted-foreground">{plan.date}</p>
-                  <span className="mt-2 inline-block rounded bg-secondary px-2 py-0.5 text-[10px] font-medium">
-                    {plan.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-
-      case "explore":
-        return (
-          <div>
-            <h1 className="text-base font-semibold text-foreground">Explore</h1>
-            <p className="mb-4 text-xs text-muted-foreground">Browse products and curated room kits</p>
-            <div className="mb-4 flex flex-wrap gap-2">
-              {["Living Room", "Bedroom", "Kitchen", "Office", "Bathroom"].map((room) => (
-                <button
-                  key={room}
-                  className="rounded bg-secondary/50 px-3 py-1.5 text-xs transition-all duration-300 hover:bg-accent hover:text-accent-foreground"
-                >
-                  {room}
-                </button>
-              ))}
-            </div>
-            <div className="grid gap-3 md:grid-cols-3">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="rounded border border-border bg-card p-3">
-                  <div className="mb-2 h-32 rounded bg-secondary/30" />
-                  <h4 className="text-xs font-medium">Product {i}</h4>
-                  <p className="text-[10px] text-muted-foreground">$299.00</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-
-      case "style":
-        return (
-          <div>
-            <h1 className="text-base font-semibold text-foreground">Style</h1>
-            <p className="mb-4 text-xs text-muted-foreground">Capture your design preferences</p>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded border border-border bg-card p-4">
-                <h3 className="mb-3 text-sm font-semibold">Choose Your Approach</h3>
-                <div className="space-y-2">
-                  <button className="w-full rounded border border-primary bg-primary/10 p-3 text-left transition-all duration-300 hover:bg-primary/20">
-                    <p className="text-xs font-medium text-primary">Known Style</p>
-                    <p className="text-[10px] text-muted-foreground">I know what I like</p>
-                  </button>
-                  <button className="w-full rounded border border-border p-3 text-left transition-all duration-300 hover:bg-secondary/30">
-                    <p className="text-xs font-medium">Discovery Mode</p>
-                    <p className="text-[10px] text-muted-foreground">Help me find my style</p>
-                  </button>
-                </div>
-              </div>
-              <div className="rounded border border-border bg-card p-4">
-                <h3 className="mb-3 text-sm font-semibold">Style Library</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {["Modern", "Traditional", "Scandinavian", "Industrial", "Minimalist", "Bohemian"].map((style) => (
-                    <button
-                      key={style}
-                      className="rounded bg-secondary/50 p-2 text-xs transition-all duration-300 hover:bg-accent hover:text-accent-foreground"
-                    >
-                      {style}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-
-      case "budget":
-        return (
-          <div>
-            <h1 className="text-base font-semibold text-foreground">Budget</h1>
-            <p className="mb-4 text-xs text-muted-foreground">Set your spending target and allocation</p>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded border border-border bg-card p-4">
-                <h3 className="mb-3 text-sm font-semibold">Total Budget</h3>
-                <input
-                  type="number"
-                  placeholder="Enter amount"
-                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm"
-                />
-                <div className="mt-3 space-y-2">
-                  <p className="text-[10px] text-muted-foreground">Budget Strictness</p>
-                  {["Hard Cap", "Soft Cap", "Explore First"].map((option) => (
-                    <button
-                      key={option}
-                      className="block w-full rounded border border-primary bg-primary/10 p-3 text-left transition-all duration-300 hover:bg-primary/20"
-                    >
-                      {option}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="rounded border border-border bg-card p-4">
-                <h3 className="mb-3 text-sm font-semibold">Category Priority</h3>
-                <div className="space-y-2">
-                  {["Seating & Sofa", "Storage & Media", "Lighting", "Decor & Styling"].map((category) => (
-                    <div key={category} className="flex items-center justify-between">
-                      <span className="text-xs">{category}</span>
-                      <span className="text-[10px] text-muted-foreground">25%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-
-      case "room-planner":
-        return (
-          <div>
-            <h1 className="text-base font-semibold text-foreground">Room Planner</h1>
-            <p className="mb-4 text-xs text-muted-foreground">Design and arrange your space</p>
-            <div className="rounded border border-border bg-card p-4">
-              <div className="mb-4 h-96 rounded bg-secondary/20 flex items-center justify-center">
-                <p className="text-sm text-muted-foreground">Interactive Room Canvas</p>
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                {["Sofa", "Chair", "Table", "Lamp", "Rug", "Shelf", "Desk", "Bed"].map((item) => (
-                  <button
-                    key={item}
-                    className="rounded bg-secondary/50 p-2 text-xs transition-all duration-300 hover:bg-accent hover:text-accent-foreground"
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )
-
-      case "validate":
-        return (
-          <div>
-            <h1 className="text-base font-semibold text-foreground">Validate</h1>
-            <p className="mb-4 text-xs text-muted-foreground">Check your design decisions</p>
-            <div className="space-y-3">
-              {[
-                { title: "Space Clearance", status: "pass", message: "All furniture has adequate clearance" },
-                { title: "Budget Check", status: "warning", message: "Slightly over budget in seating category" },
-                { title: "Delivery Timeline", status: "pass", message: "All items available for delivery" },
-                { title: "Style Consistency", status: "pass", message: "Design follows selected style guidelines" },
-              ].map((check) => (
-                <div key={check.title} className="rounded border border-border bg-card p-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-medium">{check.title}</h4>
-                    <span
-                      className={cn(
-                        "rounded px-2 py-0.5 text-[10px] font-medium",
-                        check.status === "pass" ? "bg-primary/20 text-primary" : "bg-accent/20 text-accent",
-                      )}
-                    >
-                      {check.status}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[10px] text-muted-foreground">{check.message}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-
-      case "room-report":
-        return (
-          <div>
-            <h1 className="text-base font-semibold text-foreground">Room Report</h1>
-            <p className="mb-4 text-xs text-muted-foreground">Summary of your design plan</p>
-            <div className="rounded border border-border bg-card p-4">
-              <h3 className="mb-3 text-sm font-semibold">Design Summary</h3>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-[10px] text-muted-foreground">Selected Style</p>
-                  <p className="text-xs font-medium">Modern Minimalist</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-muted-foreground">Total Budget</p>
-                  <p className="text-xs font-medium">$5,000</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-muted-foreground">Items Placed</p>
-                  <p className="text-xs font-medium">12 furniture pieces</p>
-                </div>
-                <button className="mt-4 w-full rounded bg-primary px-4 py-2 text-xs font-medium text-primary-foreground transition-all duration-300 hover:bg-primary/90">
-                  Download Report
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-
       case "project":
         return (
           <div>

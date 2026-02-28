@@ -3,60 +3,44 @@
 import type React from "react"
 import {
   Search,
-  Package,
-  BookmarkCheck,
-  LayoutGrid,
-  Palette,
-  DollarSign,
-  CheckCircle,
-  FileText,
   FolderOpen,
   MessageSquarePlus,
   ChevronDown,
   ChevronRight,
   ChevronLeft,
   CircleHelp,
+  Sparkles,
+  GitBranch,
+  LayoutDashboard,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
 
-const navigationCategories = [
+type NavItem = {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  id: string
+  expandable: boolean
+  subItems?: { label: string; id: string }[]
+}
+
+const navigationCategories: { id: string; label: string; items: NavItem[] }[] = [
   {
     id: "discover",
     label: "DISCOVER",
     items: [
       { icon: MessageSquarePlus, label: "New Chat", id: "new-chat", expandable: false },
       { icon: Search, label: "Search", id: "search", expandable: false },
+      { icon: LayoutDashboard, label: "Workspace", id: "workspace", expandable: false },
       { icon: FolderOpen, label: "Files", id: "files", expandable: false },
-      {
-        icon: Package,
-        label: "Explore",
-        id: "explore",
-        expandable: true,
-        subItems: [
-          { label: "Trending", id: "trending" },
-          { label: "Collections", id: "collections" },
-          { label: "Others", id: "others" },
-        ],
-      },
     ],
   },
   {
     id: "design",
     label: "DESIGN",
     items: [
-      { icon: BookmarkCheck, label: "Saved Plans", id: "saved-plans", expandable: false },
-      { icon: LayoutGrid, label: "Room Planner", id: "room-planner", expandable: false },
-      { icon: Palette, label: "Style", id: "style", expandable: false },
-      { icon: DollarSign, label: "Budget", id: "budget", expandable: false },
-    ],
-  },
-  {
-    id: "tools",
-    label: "TOOLS",
-    items: [
-      { icon: CheckCircle, label: "Validate", id: "validate", expandable: false },
-      { icon: FileText, label: "Report", id: "room-report", expandable: false },
+      { icon: Sparkles, label: "Discover", id: "discover", expandable: false },
+      { icon: GitBranch, label: "Playbook", id: "playbook", expandable: false },
     ],
   },
 ]
@@ -193,7 +177,7 @@ export function LeftSidebar({ activeItem, recents = DEFAULT_RECENTS, onItemClick
                           </button>
                           {item.expandable && item.subItems && expandedItems[item.id] && (
                             <div className="ml-10 mt-0.5 space-y-0 animate-in fade-in slide-in-from-top-1 duration-200">
-                              {item.subItems.map((subItem: any) => (
+                              {item.subItems.map((subItem) => (
                                 <button
                                   key={subItem.id}
                                   onClick={() => onItemClick(subItem.id, subItem.label)}
