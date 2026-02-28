@@ -30,6 +30,7 @@ import {
   Bookmark,
   Edit3,
   GitBranch,
+  Lightbulb,
 } from "lucide-react"
 import { FilesView } from "@/components/files-view"
 import { DiscoverView } from "@/components/discover-view"
@@ -436,8 +437,8 @@ export function MainContent({
                     <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">E</AvatarFallback>
                   </Avatar>
                   <div className="rounded-lg px-3 py-2 max-w-[85%] text-sm bg-card border border-border flex items-start gap-2.5">
-                    <div className={cn("w-5 h-5 rounded-full mt-0.5 flex-shrink-0 flex items-center justify-center", demoMsg.taskStatus === "complete" ? "bg-emerald-100" : "bg-primary/10")}>
-                      <Check className={cn("w-3 h-3", demoMsg.taskStatus === "complete" ? "text-emerald-600" : "text-primary")} />
+                    <div className={cn("w-5 h-5 rounded-full mt-0.5 flex-shrink-0 flex items-center justify-center", demoMsg.taskStatus === "complete" ? "bg-orange-100" : "bg-primary/10")}>
+                      <Check className={cn("w-3 h-3", demoMsg.taskStatus === "complete" ? "text-orange-600" : "text-primary")} />
                     </div>
                     <span className="flex-1 text-foreground leading-relaxed">{demoMsg.taskText}</span>
                     <button type="button" className="p-0 bg-transparent border-none cursor-pointer mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors">
@@ -454,11 +455,11 @@ export function MainContent({
                     <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">E</AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col gap-2 max-w-[85%]">
-                    <div className="rounded-lg px-3 py-2 text-sm bg-muted text-foreground">
+                    <div className="rounded-lg border border-border px-3 py-2 text-sm bg-muted text-foreground">
                       {demoMsg.content}
                     </div>
                     <div className="flex gap-2">
-                      <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors cursor-pointer">
+                      <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-600 text-white text-xs font-semibold hover:bg-orange-700 transition-colors cursor-pointer">
                         <Check className="w-3 h-3" /> Looks good
                       </button>
                       <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-muted-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer">
@@ -493,15 +494,15 @@ export function MainContent({
                     className={cn(
                       "rounded-lg px-3 py-2 text-sm",
                       isUser
-                        ? "bg-primary text-primary-foreground max-w-[85%] w-fit min-w-[10rem]"
-                        : "bg-muted text-foreground max-w-[85%]",
+                        ? "rounded-lg border border-border bg-muted/30 text-foreground/80 max-w-[85%] w-fit min-w-[10rem]"
+                        : "rounded-lg border border-border bg-muted/30 text-foreground/80 max-w-[85%]",
                     )}
                   >
                     {isUser ? msg.content : parseHighlightedContent(msg.content)}
                   </div>
                   {!isUser && demoMsg.extraction && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100 text-xs text-emerald-700 font-medium w-fit">
-                      <Check className="w-3 h-3 text-emerald-500" /> <span className="text-emerald-600 font-normal">Captured:</span> {demoMsg.extraction.value}
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 border border-orange-100 text-xs text-orange-700 font-medium w-fit">
+                      <Check className="w-3 h-3 text-orange-500" /> <span className="text-orange-600 font-normal">Captured:</span> {demoMsg.extraction.value}
                     </div>
                   )}
                   {isUser && demoMsg.sources && demoMsg.sources.length > 0 && (
@@ -519,24 +520,33 @@ export function MainContent({
           })
         )}
       </div>
-      <div className="shrink-0 flex flex-col gap-3 mt-16">
+      <div className="shrink-0 flex flex-col gap-1.5 pt-1.5 border-t border-border -mx-6 px-6">
+        <p className="text-xs font-medium flex items-center gap-2">
+          <Lightbulb className="h-3.5 w-3.5 text-primary shrink-0" />
+          <span className="text-primary">Quick suggestions</span>
+          <span className="text-foreground">for your project:</span>
+        </p>
         <div className="flex flex-wrap gap-2">
           {[
-            "Show me a mood image",
-            "Generate a floorplan",
-            "Suggest a color palette",
+            "Mood image",
+            "Floorplan",
+            "Color palette",
+            "Cozy living room",
+            "Small bedroom",
+            "Minimalist tips",
+            "Lighting ideas",
           ].map((label) => (
             <button
               key={label}
               type="button"
               onClick={() => setChatInputValue(label)}
-              className="rounded-full border border-border bg-transparent px-4 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-accent/15 hover:text-primary cursor-pointer"
+              className="rounded-full border border-border bg-transparent px-2.5 py-1 text-xs font-medium text-muted-foreground transition-all duration-200 hover:bg-accent/15 hover:text-primary cursor-pointer"
             >
               {label}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 transition-all duration-200 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-1.5 transition-all duration-200 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 mt-2">
           <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
           <Input
             placeholder="Ask about your design..."
@@ -554,9 +564,6 @@ export function MainContent({
             <Send className="h-4 w-4" />
           </button>
         </div>
-        <p className="text-xs text-muted-foreground text-center">
-          Describe your space or ask for ideas—we&apos;re here to help.
-        </p>
       </div>
     </div>
   )
@@ -599,7 +606,7 @@ export function MainContent({
                           {msg.role === "user" ? "U" : "E"}
                         </AvatarFallback>
                       </Avatar>
-                      <div className={cn("rounded-lg px-2.5 py-1.5 text-xs", msg.role === "user" ? "bg-primary text-primary-foreground max-w-[85%] w-fit min-w-[10rem]" : "bg-muted text-foreground max-w-[85%]")}>
+                      <div className={cn("rounded-lg px-2.5 py-1.5 text-xs", msg.role === "user" ? "rounded-lg border border-border bg-muted/30 text-foreground/80 max-w-[85%] w-fit min-w-[10rem]" : "rounded-lg border border-border bg-muted/30 text-foreground/80 max-w-[85%]")}>
                         {msg.content}
                       </div>
                     </div>

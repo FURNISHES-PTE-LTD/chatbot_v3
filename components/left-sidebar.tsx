@@ -6,8 +6,6 @@ import {
   FolderOpen,
   MessageSquarePlus,
   ChevronDown,
-  ChevronRight,
-  ChevronLeft,
   CircleHelp,
   Sparkles,
   GitBranch,
@@ -63,8 +61,6 @@ const WELCOME_TEXT = "Welcome back !"
 
 export function LeftSidebar({ activeItem, recents = DEFAULT_RECENTS, onItemClick, onAiAssistantClick, onHelpClick }: LeftSidebarProps) {
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [isBorderHovered, setIsBorderHovered] = useState(false)
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
   const [typedLength, setTypedLength] = useState(0)
 
@@ -81,39 +77,12 @@ export function LeftSidebar({ activeItem, recents = DEFAULT_RECENTS, onItemClick
 
   return (
     <>
-      <aside
-        className={cn(
-          "hidden shrink-0 flex-col border border-border bg-card md:flex transition-all duration-300 ease-in-out relative h-full",
-          isCollapsed ? "w-20" : "w-64",
-        )}
-      >
-        <div
-          onMouseEnter={() => setIsBorderHovered(true)}
-          onMouseLeave={() => setIsBorderHovered(false)}
-          className="absolute -right-2 top-0 bottom-0 w-4 z-10"
-        />
-
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className={cn(
-            "absolute -right-3 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-background border border-border/60 flex items-center justify-center transition-all duration-200",
-            isBorderHovered ? "opacity-100 scale-100" : "opacity-0 scale-90",
-            "hover:border-primary/50 hover:bg-accent/10 cursor-pointer",
-          )}
-        >
-          {isCollapsed ? (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-          )}
-        </button>
-
+      <aside className="hidden shrink-0 flex-col border border-border bg-card md:flex w-64 h-full">
         <div className="flex flex-col h-full overflow-hidden">
-          {!isCollapsed && (
-            <div
-              data-tutorial="welcome"
-              className="shrink-0 pt-3 pb-2 px-5 border-b border-border h-[60px] flex items-center"
-            >
+          <div
+            data-tutorial="welcome"
+            className="shrink-0 pt-3 pb-2 px-5 border-b border-border h-[60px] flex items-center"
+          >
               <div className="flex w-full items-center">
                 <div className="flex-1 min-w-0 font-medium text-[13px] leading-[1.3] text-foreground">
                   <span>{WELCOME_TEXT.slice(0, typedLength)}</span>
@@ -130,11 +99,9 @@ export function LeftSidebar({ activeItem, recents = DEFAULT_RECENTS, onItemClick
                 </button>
               </div>
             </div>
-          )}
 
           <nav data-tutorial="navigation" className="flex-1 flex flex-col gap-0 overflow-y-auto scrollbar-hide">
-            {!isCollapsed ? (
-              <div className="space-y-1.5 pt-3">
+            <div className="space-y-1.5 pt-3">
                 {navigationCategories.map((category) => (
                   <div key={category.id}>
                     <div className="px-5 pb-0.5">
@@ -229,29 +196,6 @@ export function LeftSidebar({ activeItem, recents = DEFAULT_RECENTS, onItemClick
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="flex flex-col items-center gap-3 py-2">
-                {navigationCategories.flatMap((category) =>
-                  category.items.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => onItemClick(item.id, item.label)}
-                      className={cn(
-                        "flex flex-col items-center gap-1 py-2 px-2 rounded transition-all duration-200 cursor-pointer",
-                        activeItem === item.id
-                          ? "text-primary"
-                          : "text-foreground/70 hover:text-primary hover:bg-accent/10",
-                      )}
-                    >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span className="text-[8px] font-medium text-center leading-tight max-w-[50px] break-words">
-                        {item.label}
-                      </span>
-                    </button>
-                  )),
-                )}
-              </div>
-            )}
           </nav>
         </div>
       </aside>

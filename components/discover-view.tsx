@@ -79,7 +79,7 @@ const PREFERENCES = [
 
 function StatusDot({ status, size = "sm" }: { status: string; size?: "sm" | "md" }) {
   const colors: Record<string, string> = {
-    confirmed: "bg-emerald-500",
+    confirmed: "bg-orange-500",
     potential: "bg-primary",
     inferred: "bg-violet-500",
   }
@@ -125,7 +125,7 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
     style: { color: "text-primary", bg: "bg-primary/10", border: "border-primary/20" },
     color: { color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-200" },
     furniture: { color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" },
-    vibe: { color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" },
+    vibe: { color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-200" },
   }
 
   const suggestionStyles: Record<

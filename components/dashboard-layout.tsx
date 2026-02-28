@@ -21,7 +21,6 @@ export function DashboardLayout() {
   ])
   const [activeTabId, setActiveTabId] = useState("tab-1")
   const [isRightSidebarVisible, setIsRightSidebarVisible] = useState(true)
-  const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(false)
   const [isTutorialOpen, setIsTutorialOpen] = useState(false)
   const [currentWorkspace, setCurrentWorkspace] = useState<{ id: string; name: string } | null>(DEFAULT_WORKSPACE)
   const [currentProject, setCurrentProject] = useState<{ id: string; name: string } | null>(DEFAULT_PROJECT)
@@ -107,7 +106,7 @@ export function DashboardLayout() {
   }
 
   const handleAiAssistantClick = () => {
-    setIsRightSidebarCollapsed(!isRightSidebarCollapsed)
+    // Right sidebar is always visible; no collapse toggle
   }
 
   const handleCloseRightSidebar = () => {
@@ -194,8 +193,6 @@ export function DashboardLayout() {
         <div className="overflow-hidden h-full">
           <RightSidebar
             onClose={handleCloseRightSidebar}
-            isCollapsed={isRightSidebarCollapsed}
-            onToggleCollapse={() => setIsRightSidebarCollapsed(!isRightSidebarCollapsed)}
             onChangeAssistantClick={handleChangeAssistantClick}
             selectedAssistant={selectedAssistant}
           />

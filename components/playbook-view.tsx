@@ -56,8 +56,8 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 function ConfBar({ value }: { value: number }) {
-  const color = value >= 85 ? "bg-emerald-500" : value >= 60 ? "bg-primary" : "bg-red-400"
-  const textColor = value >= 85 ? "text-emerald-600" : value >= 60 ? "text-primary" : "text-red-500"
+  const color = value >= 85 ? "bg-orange-500" : value >= 60 ? "bg-primary" : "bg-red-400"
+  const textColor = value >= 85 ? "text-orange-600" : value >= 60 ? "text-primary" : "text-red-500"
   return (
     <div className="flex items-center gap-2 min-w-[60px]">
       <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
@@ -156,7 +156,7 @@ export function PlaybookView() {
             <Plus className="w-3.5 h-3.5" /> New Node
           </button>
           <div className="flex-1" />
-          <span className="text-xs text-emerald-600 flex items-center gap-1">
+          <span className="text-xs text-orange-600 flex items-center gap-1">
             <Check className="w-3 h-3" /> Saved
           </span>
           <div className="w-px h-5 bg-border mx-2" />

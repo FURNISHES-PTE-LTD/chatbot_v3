@@ -2,62 +2,97 @@
 
 import { useState } from "react"
 import { cn } from "@/lib/utils"
-import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Send, Bookmark, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
+import { RefreshCw, Lightbulb, Home, DollarSign, Star, ListChecks } from "lucide-react"
 
 interface RightSidebarProps {
   onClose?: () => void
-  isCollapsed?: boolean
-  onToggleCollapse?: () => void
   onChangeAssistantClick?: () => void
   selectedAssistant?: { id: string; name: string; tagline: string }
 }
 
+function PreferenceCard({
+  title,
+  description,
+  icon: Icon,
+  isComplete,
+  current,
+  options,
+  value,
+  onChange,
+  borderOnTabs,
+  useMutedBackground,
+}: {
+  title: string
+  description: string
+  icon: React.ComponentType<{ className?: string }>
+  isComplete: boolean
+  current: string | null
+  options: string[]
+  value: string | null
+  onChange: (v: string | null) => void
+  borderOnTabs?: boolean
+  useMutedBackground?: boolean
+}) {
+  const tabClass = borderOnTabs ? "border border-border" : ""
+  const bgClass = useMutedBackground ? "bg-muted/30" : "bg-card"
+  return (
+    <div
+      className={cn(
+        "animate-in fade-in slide-in-from-right-2 duration-300 rounded border p-2.5 transition-all duration-300 hover:border-primary/40",
+        isComplete ? `border-primary/40 ${bgClass}` : `border-border/50 ${bgClass}`,
+      )}
+    >
+      <div className="flex items-center gap-1.5 mb-1">
+        <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <h4 className="text-xs font-semibold text-foreground">{title}</h4>
+      </div>
+      <p className="text-[10px] text-muted-foreground mb-2">{description}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {value ? (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className={cn("rounded-md px-2 py-1 text-[10px] font-bold bg-accent/15 text-primary hover:bg-accent/20 hover:text-primary transition-all duration-200", tabClass)}
+          >
+            {value.replace(/\b\w/g, (c) => c.toUpperCase())}
+          </button>
+        ) : (
+          options.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => onChange(opt)}
+              className={cn("rounded-md px-2 py-1 text-[10px] font-medium bg-muted/80 text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-200", tabClass)}
+            >
+              {opt}
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+const ROOM_OPTIONS = ["living room", "bedroom", "kitchen", "dining room", "bathroom", "home office"]
+const BUDGET_OPTIONS = ["$1000", "$5000", "$10000+"]
+const STYLE_OPTIONS = ["modern", "traditional", "minimalist", "scandinavian", "industrial", "bohemian"]
+const COLOR_OPTIONS = ["blue", "green", "neutral", "warm tones", "cool tones"]
+const FURNITURE_OPTIONS = ["sofa", "bed", "dining table", "coffee table", "lighting"]
+
 export function RightSidebar({
   onClose,
-  isCollapsed,
-  onToggleCollapse,
   onChangeAssistantClick,
   selectedAssistant = { id: "eva", name: "Eva", tagline: "[the Assistant]" },
 }: RightSidebarProps) {
-  const [activeView, setActiveView] = useState<"chat" | "summary">("summary")
-  const [inputValue, setInputValue] = useState("")
-  const [isBorderHovered, setIsBorderHovered] = useState(false)
-
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return
-    setInputValue("")
-  }
+  const [roomType, setRoomType] = useState<string | null>("kitchen")
+  const [budget, setBudget] = useState<string | null>(null)
+  const [designStyle, setDesignStyle] = useState<string | null>(null)
+  const [colorPref, setColorPref] = useState<string | null>(null)
+  const [furnitureNeeds, setFurnitureNeeds] = useState<string | null>(null)
 
   return (
-    <aside
-      className={cn(
-        "shrink-0 flex flex-col bg-card border border-border h-full relative transition-all duration-300 ease-in-out",
-        isCollapsed ? "w-0 border-0 overflow-hidden" : "w-64",
-      )}
-    >
-      <div
-        onMouseEnter={() => setIsBorderHovered(true)}
-        onMouseLeave={() => setIsBorderHovered(false)}
-        className="absolute -left-2 top-0 bottom-0 w-4 z-10"
-      />
-
-      <button
-        onClick={onToggleCollapse}
-        className={cn(
-          "absolute -left-3 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-background border border-border/60 flex items-center justify-center transition-all duration-200",
-          isBorderHovered ? "opacity-100 scale-100" : "opacity-0 scale-90",
-          "hover:border-primary/50 hover:bg-accent/10 cursor-pointer",
-        )}
-      >
-        {isCollapsed ? (
-          <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        )}
-      </button>
-
+    <aside className="shrink-0 flex flex-col bg-card border border-border h-full w-64">
       <div className="flex items-center gap-2.5 px-4 py-4 bg-card border-b border-border">
         <Avatar className="h-8 w-8 bg-primary">
           <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
@@ -77,168 +112,77 @@ export function RightSidebar({
         </button>
       </div>
 
-      <div className="flex items-center gap-4 border-b border-border bg-card px-4 py-2">
-        <button
-          onClick={() => setActiveView("summary")}
-          className={cn(
-            "relative text-xs font-medium transition-all duration-300",
-            activeView === "summary" ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          Summary
-          {activeView === "summary" && (
-            <div className="absolute bottom-[-9px] left-0 right-0 h-0.5 bg-primary animate-in slide-in-from-left duration-200" />
-          )}
-        </button>
-        <button
-          onClick={() => setActiveView("chat")}
-          className={cn(
-            "relative text-xs font-medium transition-all duration-300",
-            activeView === "chat" ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          Chat
-          {activeView === "chat" && (
-            <div className="absolute bottom-[-9px] left-0 right-0 h-0.5 bg-primary animate-in slide-in-from-left duration-200" />
-          )}
-        </button>
-      </div>
-
-      {activeView === "chat" && (
-        <div className="flex flex-1 flex-col">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            <div className="text-sm text-foreground">Good morning!</div>
-
-            <div className="text-xs text-muted-foreground leading-relaxed">
-              First step is complete. Control Center Configured! This will be the central hub for managing your
-              Workflows...
-            </div>
-
-            <div className="text-xs text-foreground font-medium mt-3">Working on Workflows...</div>
-
-            <div className="group relative rounded-sm border border-border bg-card p-3 transition-all duration-300 hover:border-primary/40 hover:shadow-sm">
-              <div className="flex items-start gap-2.5">
-                <div className="flex-shrink-0 mt-0.5">
-                  <div className="h-4 w-4 rounded bg-muted flex items-center justify-center">
-                    <div className="h-2 w-2 rounded bg-primary/60" />
-                  </div>
-                </div>
-                <div className="flex-1 text-xs text-foreground leading-relaxed">
-                  Management shift report that goes on the second line
-                </div>
-                <button className="flex-shrink-0 text-muted-foreground transition-colors duration-300 hover:text-primary">
-                  <Bookmark className="h-3.5 w-3.5" />
-                </button>
+      <div className="flex-1 overflow-y-auto p-3">
+          <div className="space-y-3">
+            {/* Brainstorm card */}
+            <div className="animate-in fade-in slide-in-from-right-2 duration-300 rounded border border-border bg-muted/30 p-3">
+              <div className="flex items-center gap-1.5">
+                <Lightbulb className="h-3.5 w-3.5 text-primary shrink-0" />
+                <h4 className="text-[12px] font-medium text-muted-foreground">Brainstorm for me!!</h4>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="text-xs text-foreground">This looks good</div>
-              <Avatar className="h-5 w-5 bg-accent">
-                <AvatarFallback className="bg-accent text-accent-foreground text-[10px]">U</AvatarFallback>
-              </Avatar>
-            </div>
-          </div>
-
-          <div className="border-t border-border bg-card p-3">
-            <div className="flex items-center gap-2 rounded-sm border border-border bg-background p-2 transition-all duration-300 focus-within:border-primary/50 focus-within:shadow-sm">
-              <Avatar className="h-5 w-5 bg-primary flex-shrink-0">
-                <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">E</AvatarFallback>
-              </Avatar>
-              <Input
-                placeholder={`Ask ${selectedAssistant.name}`}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                className="h-7 border-0 bg-transparent px-0 text-xs placeholder:text-muted-foreground/60 focus-visible:ring-0 focus-visible:ring-offset-0"
-              />
-              <button
-                onClick={handleSendMessage}
-                className="flex-shrink-0 rounded p-1.5 bg-primary text-primary-foreground transition-all duration-300 hover:bg-accent hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={!inputValue.trim()}
-              >
-                <Send className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <p className="mt-2 text-[10px] text-muted-foreground/60 text-center">
-              The agents can sometimes make mistakes. Double-check responses.
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60 px-0.5 pb-0.5 pt-1">
+              Preferences
             </p>
+            <PreferenceCard
+              title="Room Type"
+              description="The type of room you're designing"
+              icon={Home}
+              isComplete={!!roomType}
+              current={roomType}
+              options={ROOM_OPTIONS}
+              value={roomType}
+              onChange={setRoomType}
+              borderOnTabs
+              useMutedBackground
+            />
+            <PreferenceCard
+              title="Budget Range"
+              description="Your budget for the project"
+              icon={DollarSign}
+              isComplete={!!budget}
+              current={budget}
+              options={BUDGET_OPTIONS}
+              value={budget}
+              onChange={setBudget}
+              borderOnTabs
+            />
+            <PreferenceCard
+              title="Design Style"
+              description="Your preferred design aesthetic"
+              icon={Lightbulb}
+              isComplete={!!designStyle}
+              current={designStyle}
+              options={STYLE_OPTIONS}
+              value={designStyle}
+              onChange={setDesignStyle}
+              borderOnTabs
+            />
+            <PreferenceCard
+              title="Color Preferences"
+              description="Colors you want to incorporate"
+              icon={Star}
+              isComplete={!!colorPref}
+              current={colorPref}
+              options={COLOR_OPTIONS}
+              value={colorPref}
+              onChange={setColorPref}
+              borderOnTabs
+            />
+            <PreferenceCard
+              title="Furniture Needs"
+              description="Furniture items you need"
+              icon={ListChecks}
+              isComplete={!!furnitureNeeds}
+              current={furnitureNeeds}
+              options={FURNITURE_OPTIONS}
+              value={furnitureNeeds}
+              onChange={setFurnitureNeeds}
+              borderOnTabs
+            />
           </div>
         </div>
-      )}
-
-      {activeView === "summary" && (
-        <div className="flex-1 overflow-y-auto p-3">
-          <div className="space-y-4">
-            <div className="animate-in fade-in slide-in-from-right-2 duration-300">
-              <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                Current Section
-              </h4>
-              <div className="rounded border border-border/50 bg-primary/5 p-2.5 transition-all duration-300 hover:border-primary/40">
-                <p className="text-xs font-medium text-foreground">Dashboard</p>
-                <p className="text-[10px] text-muted-foreground">Overview</p>
-              </div>
-            </div>
-
-            <div className="animate-in fade-in slide-in-from-right-2 duration-300 delay-75">
-              <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                Active Filters
-              </h4>
-              <div className="space-y-1.5">
-                {[
-                  { label: "Date Range", value: "Last 7 days" },
-                  { label: "Status", value: "All" },
-                  { label: "Sort By", value: "Recent" },
-                ].map((filter) => (
-                  <div
-                    key={filter.label}
-                    className="flex items-center justify-between rounded border border-border/50 bg-primary/5 px-2.5 py-1.5 transition-all duration-300 hover:border-primary/40"
-                  >
-                    <span className="text-[10px] text-muted-foreground">{filter.label}</span>
-                    <span className="text-xs text-foreground">{filter.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="animate-in fade-in slide-in-from-right-2 duration-300 delay-150">
-              <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                Setup Progress
-              </h4>
-              <div className="rounded border border-border/50 bg-primary/5 p-2.5 transition-all duration-300 hover:border-primary/40">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-[10px] text-muted-foreground">Completed</span>
-                  <span className="text-xs font-medium text-primary">3/5</span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                  <div className="h-full w-[60%] bg-primary transition-all duration-500" />
-                </div>
-              </div>
-            </div>
-
-            <div className="animate-in fade-in slide-in-from-right-2 duration-300 delay-200">
-              <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                Quick Stats
-              </h4>
-              <div className="space-y-1.5">
-                {[
-                  { label: "Revenue", value: "$45,231", color: "text-accent" },
-                  { label: "Orders", value: "2,350", color: "text-primary" },
-                  { label: "Customers", value: "1,234", color: "text-foreground" },
-                ].map((stat) => (
-                  <div
-                    key={stat.label}
-                    className="flex items-center justify-between rounded border border-border/50 bg-primary/5 px-2.5 py-1.5 transition-all duration-300 hover:border-primary/40"
-                  >
-                    <span className="text-[10px] text-muted-foreground">{stat.label}</span>
-                    <span className={cn("text-xs font-medium", stat.color)}>{stat.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </aside>
   )
 }
