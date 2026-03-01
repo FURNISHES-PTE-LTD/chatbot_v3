@@ -6,6 +6,7 @@ import {
   DEFAULT_PROJECT,
   DEFAULT_ASSISTANT,
 } from "@/lib/constants"
+import { AppProvider } from "@/lib/contexts/app-context"
 import type { RecentItem, Workspace, Project, Assistant } from "@/lib/types"
 import { LeftSidebar } from "./left-sidebar"
 import { RightSidebar } from "./right-sidebar"
@@ -125,64 +126,63 @@ export function DashboardLayout() {
     setShowAssistantPicker(false)
   }
 
+  const appContextValue = {
+    activeItem,
+    setActiveItem,
+    recents,
+    addRecent: (item: RecentItem) => setRecents((prev) => [item, ...prev]),
+    onItemClick: handleItemClick,
+  }
+
   return (
-    <div className="flex flex-col h-screen w-full overflow-hidden bg-muted">
-      <Navbar onFurnishesClick={handleFurnishesClick} />
+    <AppProvider value={appContextValue}>
+      <div className="flex flex-col h-screen w-full overflow-hidden bg-muted">
+        <Navbar onFurnishesClick={handleFurnishesClick} />
 
-      <div className="flex flex-1 overflow-hidden p-2 gap-2 px-4">
-        {/* Left Sidebar */}
-        <div className="overflow-hidden h-full">
-          <LeftSidebar
-            activeItem={activeItem}
-            recents={recents}
-            onItemClick={handleItemClick}
-            onHelpClick={handleHelpClick}
-          />
+        <div className="flex flex-1 overflow-hidden p-2 gap-2 px-4">
+          <div className="overflow-hidden h-full">
+            <LeftSidebar onHelpClick={handleHelpClick} />
+          </div>
+
+          <div className="flex-1 bg-card overflow-hidden border border-border transition-all duration-200">
+            <MainContent
+              workspaceListKey={workspaceListKey}
+              currentWorkspace={currentWorkspace}
+              currentProject={currentProject}
+              onSelectWorkspaceProject={handleSelectWorkspaceProject}
+              onClearWorkspaceProject={handleClearWorkspaceProject}
+              showAssistantPicker={showAssistantPicker}
+              onSelectAssistant={handleSelectAssistant}
+              selectedAssistant={selectedAssistant}
+              pendingChatMessage={pendingChatMessage}
+              onClearPendingChatMessage={() => setPendingChatMessage(null)}
+              onEditInChatFromFiles={(title) => {
+                setPendingChatMessage(`Can you adjust the ${title}?`)
+                const newId = `recent-${Date.now()}`
+                setRecents((prev) => [{ id: newId, label: "New Chat" }, ...prev])
+                setActiveItem(newId)
+                setTabs((t) => t.map((tab) => (tab.id === activeTabId ? { ...tab, section: newId } : tab)))
+              }}
+              onSendToChatFromDiscover={(text) => {
+                setPendingChatMessage(text)
+                const newId = `recent-${Date.now()}`
+                setRecents((prev) => [{ id: newId, label: "New Chat" }, ...prev])
+                setActiveItem(newId)
+                setTabs((t) => t.map((tab) => (tab.id === activeTabId ? { ...tab, section: newId } : tab)))
+              }}
+            />
+          </div>
+
+          <div className="overflow-hidden h-full">
+            <RightSidebar
+              onChangeAssistantClick={handleChangeAssistantClick}
+              selectedAssistant={selectedAssistant}
+            />
+          </div>
         </div>
 
-        {/* Middle Section */}
-        <div className="flex-1 bg-card overflow-hidden border border-border transition-all duration-200">
-          <MainContent
-            activeItem={activeItem}
-            recents={recents}
-            onItemClick={handleItemClick}
-            workspaceListKey={workspaceListKey}
-            currentWorkspace={currentWorkspace}
-            currentProject={currentProject}
-            onSelectWorkspaceProject={handleSelectWorkspaceProject}
-            onClearWorkspaceProject={handleClearWorkspaceProject}
-            showAssistantPicker={showAssistantPicker}
-            onSelectAssistant={handleSelectAssistant}
-            selectedAssistant={selectedAssistant}
-            pendingChatMessage={pendingChatMessage}
-            onClearPendingChatMessage={() => setPendingChatMessage(null)}
-            onEditInChatFromFiles={(title) => {
-              setPendingChatMessage(`Can you adjust the ${title}?`)
-              const newId = `recent-${Date.now()}`
-              setRecents((prev) => [{ id: newId, label: "New Chat" }, ...prev])
-              setActiveItem(newId)
-              setTabs((t) => t.map((tab) => (tab.id === activeTabId ? { ...tab, section: newId } : tab)))
-            }}
-            onSendToChatFromDiscover={(text) => {
-              setPendingChatMessage(text)
-              const newId = `recent-${Date.now()}`
-              setRecents((prev) => [{ id: newId, label: "New Chat" }, ...prev])
-              setActiveItem(newId)
-              setTabs((t) => t.map((tab) => (tab.id === activeTabId ? { ...tab, section: newId } : tab)))
-            }}
-          />
-        </div>
-
-        {/* Right Sidebar */}
-        <div className="overflow-hidden h-full">
-          <RightSidebar
-            onChangeAssistantClick={handleChangeAssistantClick}
-            selectedAssistant={selectedAssistant}
-          />
-        </div>
+        <TutorialGuide isOpen={isTutorialOpen} onClose={() => setIsTutorialOpen(false)} />
       </div>
-
-      <TutorialGuide isOpen={isTutorialOpen} onClose={() => setIsTutorialOpen(false)} />
-    </div>
+    </AppProvider>
   )
 }

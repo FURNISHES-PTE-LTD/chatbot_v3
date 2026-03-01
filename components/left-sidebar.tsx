@@ -11,7 +11,7 @@ import {
   LayoutDashboard,
 } from "lucide-react"
 import { DEFAULT_RECENTS } from "@/lib/mock-data"
-import type { RecentItem } from "@/lib/types"
+import { useAppContext } from "@/lib/contexts/app-context"
 import { IconButton } from "@/components/shared/icon-button"
 import { SectionLabel } from "@/components/shared/section-label"
 import { cn } from "@/lib/utils"
@@ -47,15 +47,13 @@ const navigationCategories: { id: string; label: string; items: NavItem[] }[] = 
 ]
 
 interface LeftSidebarProps {
-  activeItem: string
-  recents?: RecentItem[]
-  onItemClick: (id: string, label: string) => void
   onHelpClick?: () => void
 }
 
 const WELCOME_TEXT = "Welcome back !"
 
-export function LeftSidebar({ activeItem, recents = DEFAULT_RECENTS, onItemClick, onHelpClick }: LeftSidebarProps) {
+export function LeftSidebar({ onHelpClick }: LeftSidebarProps) {
+  const { activeItem, recents = DEFAULT_RECENTS, onItemClick } = useAppContext()
   const [typedLength, setTypedLength] = useState(0)
 
   useEffect(() => {

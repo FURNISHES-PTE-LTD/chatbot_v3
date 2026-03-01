@@ -2,6 +2,7 @@
 
 import React from "react"
 import { DEMO_RECENT_ID, AI_RESPONSE_DELAY_MS } from "@/lib/constants"
+import { useAppContext } from "@/lib/contexts/app-context"
 import { MOCK_DEMO_MESSAGES, CHAT_SUGGESTION_CARDS, MOCK_WORKSPACES, MOCK_PROJECTS_BY_WORKSPACE } from "@/lib/mock-data"
 import type { ChatMessage, Workspace, Project, Assistant, RecentItem } from "@/lib/types"
 import type { DemoMessage } from "@/lib/mock-data"
@@ -64,9 +65,6 @@ interface AssistantOption {
 }
 
 interface MainContentProps {
-  activeItem: string
-  recents?: RecentItem[]
-  onItemClick?: (id: string, label: string) => void
   workspaceListKey?: number
   currentWorkspace?: Workspace | null
   currentProject?: Project | null
@@ -75,12 +73,9 @@ interface MainContentProps {
   showAssistantPicker?: boolean
   onSelectAssistant?: (assistant: Assistant) => void
   selectedAssistant?: Assistant
-  /** When user clicks "Edit in chat" from Files view, switch to chat and pre-fill this message. */
   pendingChatMessage?: string | null
   onClearPendingChatMessage?: () => void
-  /** Called from Files view when user clicks "Edit in chat"; parent should switch to chat and set pendingChatMessage. */
   onEditInChatFromFiles?: (title: string) => void
-  /** Called from Discover view when user clicks a suggestion or "explore next"; parent should switch to chat and set pendingChatMessage. */
   onSendToChatFromDiscover?: (text: string) => void
 }
 
@@ -162,9 +157,6 @@ const chatSuggestionCardsWithIcons = CHAT_SUGGESTION_CARDS.map((card) => ({
 }))
 
 export function MainContent({
-  activeItem,
-  recents = [],
-  onItemClick,
   workspaceListKey = 0,
   currentWorkspace = null,
   currentProject = null,
@@ -178,6 +170,7 @@ export function MainContent({
   onEditInChatFromFiles,
   onSendToChatFromDiscover,
 }: MainContentProps) {
+  const { activeItem, recents = [], onItemClick } = useAppContext()
   const [isSaved, setIsSaved] = useState(false)
   const [chatMessagesByKey, setChatMessagesByKey] = useState<Record<string, ChatMessage[]>>({})
   const [chatInputValue, setChatInputValue] = useState("")
