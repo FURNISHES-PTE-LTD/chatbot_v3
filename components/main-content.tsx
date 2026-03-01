@@ -40,6 +40,11 @@ import {
 import { FilesView } from "./files-view"
 import { DiscoverView } from "./discover-view"
 import { PlaybookView } from "./playbook-view"
+import { SearchView } from "./views/search-view"
+import { CartView } from "./views/cart-view"
+import { CommunityView } from "./views/community-view"
+import { CustomizeView } from "./views/customize-view"
+import { SettingsView } from "./views/settings-view"
 import { useState, useEffect } from "react"
 import { SectionLabel } from "@/components/shared/section-label"
 import { Input } from "@/components/ui/input"
@@ -582,65 +587,7 @@ export function MainContent({
     }
 
     if (activeItem === "search") {
-      return (
-        <div>
-          <h1 className="text-base font-semibold text-foreground mb-4">Search</h1>
-
-          <div className="mb-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search for furniture, rooms, styles..."
-                className="w-full rounded-lg border border-border bg-background pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                Recent Searches
-              </h3>
-              <div className="space-y-2">
-                {[
-                  "Modern living room sofa",
-                  "Scandinavian dining table",
-                  "Minimalist bedroom set",
-                  "Industrial office desk",
-                ].map((search, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    className="w-full text-left px-4 py-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 text-sm text-foreground transition-all duration-200 cursor-pointer"
-                  >
-                    {search}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                Trending Searches
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {["Mid-century modern", "Velvet sofa", "Accent chairs", "Console table", "Area rugs"].map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    className="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-all duration-200 cursor-pointer"
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )
+      return <SearchView />
     }
 
     if (activeItem === "files") {
@@ -660,17 +607,7 @@ export function MainContent({
     }
 
     if (activeItem === "cart") {
-      return (
-        <div className="rounded border border-border bg-card p-4">
-          <h1 className="text-base font-semibold text-foreground">Shopping Cart</h1>
-          <p className="mb-4 text-xs text-muted-foreground">Review your selected items</p>
-          <div className="space-y-3">
-            <div className="rounded border border-border bg-background p-4">
-              <p className="text-sm text-muted-foreground">Your cart is empty</p>
-            </div>
-          </div>
-        </div>
-      )
+      return <CartView />
     }
 
     switch (activeItem) {
@@ -686,176 +623,13 @@ export function MainContent({
         )
 
       case "community":
-        return (
-          <div>
-            <h1 className="text-base font-semibold text-foreground">Community</h1>
-            <p className="mb-4 text-xs text-muted-foreground">Explore shared designs and templates</p>
-            <div className="grid gap-3 md:grid-cols-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="rounded border border-border bg-card p-3">
-                  <div className="mb-2 h-32 rounded bg-secondary/30" />
-                  <h4 className="text-xs font-medium">Shared Design {i}</h4>
-                  <p className="text-[10px] text-muted-foreground">by Designer {i}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
+        return <CommunityView />
 
       case "customize":
-        return (
-          <div>
-            <h1 className="text-base font-semibold text-foreground">Customize</h1>
-            <p className="mb-4 text-xs text-muted-foreground">Adjust your preferences and settings</p>
-            <div className="space-y-3">
-              <div className="rounded border border-border bg-card p-4">
-                <h4 className="mb-2 text-xs font-medium">Measurement Units</h4>
-                <div className="flex gap-2">
-                  {["Metric", "Imperial"].map((unit) => (
-                    <button
-                      key={unit}
-                      type="button"
-                      className="rounded bg-secondary/50 px-3 py-1.5 text-xs transition-colors duration-200 hover:bg-accent hover:text-accent-foreground"
-                    >
-                      {unit}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="rounded border border-border bg-card p-4">
-                <h4 className="mb-2 text-xs font-medium">Default Budget</h4>
-                <input
-                  type="number"
-                  placeholder="Set default"
-                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm"
-                />
-              </div>
-            </div>
-          </div>
-        )
+        return <CustomizeView />
 
       case "settings":
-        return (
-          <div className="h-full overflow-y-auto p-6">
-            <h1 className="text-xl font-semibold text-foreground mb-6">Settings</h1>
-
-            <div className="max-w-3xl space-y-6">
-              {/* Appearance Section */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-foreground pb-2 border-b border-border">Appearance</h3>
-                <div className="grid gap-4">
-                  <div className="flex items-center justify-between py-2">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Theme</p>
-                      <p className="text-xs text-muted-foreground">Choose your interface theme</p>
-                    </div>
-                    <select className="px-3 py-2 rounded-lg border border-border bg-background text-sm cursor-pointer">
-                      <option>Light</option>
-                      <option>Dark</option>
-                      <option>System</option>
-                    </select>
-                  </div>
-
-                  <div className="flex items-center justify-between py-2">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Compact mode</p>
-                      <p className="text-xs text-muted-foreground">Reduce spacing for denser layouts</p>
-                    </div>
-                    <Switch />
-                  </div>
-                </div>
-              </div>
-
-              {/* Notifications Section */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-foreground pb-2 border-b border-border">Notifications</h3>
-                <div className="grid gap-4">
-                  <div className="flex items-center justify-between py-2">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Email notifications</p>
-                      <p className="text-xs text-muted-foreground">Receive updates via email</p>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-
-                  <div className="flex items-center justify-between py-2">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Push notifications</p>
-                      <p className="text-xs text-muted-foreground">Browser push notifications</p>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-
-                  <div className="flex items-center justify-between py-2">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Project updates</p>
-                      <p className="text-xs text-muted-foreground">Get notified about project changes</p>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-                </div>
-              </div>
-
-              {/* Assistant Section */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-foreground pb-2 border-b border-border">Assistant</h3>
-                <div className="grid gap-4">
-                  <div className="flex items-center justify-between py-2">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Auto-suggestions</p>
-                      <p className="text-xs text-muted-foreground">Get AI-powered recommendations</p>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-
-                  <div className="flex items-center justify-between py-2">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Voice responses</p>
-                      <p className="text-xs text-muted-foreground">Enable voice assistant</p>
-                    </div>
-                    <Switch />
-                  </div>
-
-                  <div className="flex items-center justify-between py-2">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Assistant character</p>
-                      <p className="text-xs text-muted-foreground">Choose your AI assistant</p>
-                    </div>
-                    <select className="px-3 py-2 rounded-lg border border-border bg-background text-sm cursor-pointer">
-                      <option>Eva</option>
-                      <option>Alex</option>
-                      <option>Sam</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Privacy & Security Section */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-foreground pb-2 border-b border-border">
-                  Privacy & Security
-                </h3>
-                <div className="grid gap-4">
-                  <div className="flex items-center justify-between py-2">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Analytics tracking</p>
-                      <p className="text-xs text-muted-foreground">Help improve our service</p>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-
-                  <div className="flex items-center justify-between py-2">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Auto-save projects</p>
-                      <p className="text-xs text-muted-foreground">Automatically save your work</p>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )
+        return <SettingsView />
 
       default:
         return (
