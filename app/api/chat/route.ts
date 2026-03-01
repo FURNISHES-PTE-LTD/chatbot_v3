@@ -9,6 +9,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getDomainConfig } from "@/lib/domain-config"
 import { buildContext } from "@/lib/context-builder"
+import { getPreferencesAsRecord } from "@/lib/api-helpers"
+import { getOpenAIKey, OPENAI_KEY_MISSING_MESSAGE } from "@/lib/openai"
 
 const RequestSchema = z.object({
   conversationId: z.string().optional(),
@@ -23,11 +25,8 @@ export async function POST(req: Request) {
     return Response.json({ error: "Too many requests. Please slow down." }, { status: 429 })
   }
 
-  if (!process.env.OPENAI_API_KEY) {
-    return Response.json(
-      { error: "OPENAI_API_KEY is not set. Add it to .env.local to enable chat." },
-      { status: 503 }
-    )
+  if (!getOpenAIKey()) {
+    return Response.json({ error: OPENAI_KEY_MISSING_MESSAGE }, { status: 503 })
   }
 
   const body = await req.json()
@@ -70,8 +69,7 @@ export async function POST(req: Request) {
 
   let prefRecord: Record<string, string> = preferences ?? {}
   if (Object.keys(prefRecord).length === 0) {
-    const prefs = await prisma.preference.findMany({ where: { conversationId: convoId } })
-    for (const p of prefs) prefRecord[p.field] = p.value
+    prefRecord = await getPreferencesAsRecord(prisma, convoId!)
   }
 
   const { systemSuffix, messages } = await buildContext(messagesForContext, prefRecord, {

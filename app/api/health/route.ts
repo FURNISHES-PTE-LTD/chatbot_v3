@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { getOpenAIKey } from "@/lib/openai"
 
 export async function GET() {
   try {
@@ -6,7 +7,7 @@ export async function GET() {
     return Response.json({
       ok: true,
       database: "connected",
-      llm: !!process.env.OPENAI_API_KEY,
+      llm: !!getOpenAIKey(),
     })
   } catch (e) {
     return Response.json(

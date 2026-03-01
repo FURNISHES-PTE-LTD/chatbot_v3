@@ -3,20 +3,32 @@ import { openai } from "@ai-sdk/openai"
 import { zodSchema } from "ai"
 import { z } from "zod"
 import { prisma } from "@/lib/db"
+import { messagesToTranscript } from "@/lib/api-helpers"
+import { getOpenAIKey } from "@/lib/openai"
+
+const SuggestionsRequestSchema = z.object({
+  conversationId: z.string(),
+})
 
 const SuggestionsSchema = z.object({
   suggestions: z.array(z.string()),
 })
 
+const DEFAULT_SUGGESTIONS = ["Mood image", "Floorplan", "Color palette", "Cozy living room", "Small bedroom", "Minimalist tips"]
+
 export async function POST(req: Request) {
-  if (!process.env.OPENAI_API_KEY) {
-    return Response.json({ suggestions: ["Mood image", "Floorplan", "Color palette", "Cozy living room", "Small bedroom", "Minimalist tips"] })
+  if (!getOpenAIKey()) {
+    return Response.json({ suggestions: DEFAULT_SUGGESTIONS })
   }
   const body = await req.json()
-  const { conversationId } = body as { conversationId?: string }
-  if (!conversationId) {
-    return Response.json({ suggestions: ["Mood image", "Floorplan", "Color palette", "Cozy living room", "Small bedroom", "Minimalist tips"] })
+  const parsed = SuggestionsRequestSchema.safeParse(body)
+  if (!parsed.success) {
+    return Response.json(
+      { error: "Invalid request", details: parsed.error.flatten() },
+      { status: 400 },
+    )
   }
+  const { conversationId } = parsed.data
 
   const messages = await prisma.message.findMany({
     where: { conversationId },
@@ -24,10 +36,10 @@ export async function POST(req: Request) {
     take: 20,
   })
   if (messages.length < 2) {
-    return Response.json({ suggestions: ["Mood image", "Floorplan", "Color palette", "Cozy living room", "Small bedroom", "Minimalist tips"] })
+    return Response.json({ suggestions: DEFAULT_SUGGESTIONS })
   }
 
-  const transcript = messages.map((m) => `${m.role}: ${m.content}`).join("\n")
+  const transcript = messagesToTranscript(messages)
 
   const { object } = await generateObject({
     model: openai("gpt-4o-mini"),

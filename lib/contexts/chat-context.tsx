@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useCallback } from "react"
 import type { ChatMessage } from "@/lib/types"
 import { AI_RESPONSE_DELAY_MS } from "@/lib/constants"
 import { useCurrentPreferences } from "@/lib/contexts/current-preferences-context"
+import { apiGet, apiPost, API_ROUTES } from "@/lib/api"
 
 interface ChatContextValue {
   messagesByKey: Record<string, ChatMessage[]>
@@ -66,7 +67,7 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
     const convoId = conversationIds[key]
     if (convoId) body.conversationId = convoId
 
-    fetch("/api/chat", {
+    fetch(API_ROUTES.chat, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -75,16 +76,11 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
         const newConvoId = response.headers.get("X-Conversation-Id")
         if (newConvoId) {
           setConversationIds((prev) => ({ ...prev, [key]: newConvoId }))
-          fetch("/api/extract", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              conversationId: newConvoId,
-              content: userContent,
-            }),
+          apiPost<{ entities?: { text: string; field: string; confidence: number }[] }>(API_ROUTES.extract, {
+            conversationId: newConvoId,
+            content: userContent,
           })
-            .then((r) => r.json())
-            .then((data: { entities?: { text: string; field: string; confidence: number }[] }) => {
+            .then((data) => {
               if (!data.entities?.length) return
               setMessagesByKey((prev) => {
                 const list = prev[key] || []
@@ -139,15 +135,13 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
           })
         }
         if (willBeSecondUserMessage && newConvoId && onConversationTitleGenerated) {
-          fetch(`/api/conversations/${newConvoId}/title`, { method: "POST" })
-            .then((r) => r.json())
-            .then((data: { title: string }) => onConversationTitleGenerated(key, newConvoId!, data.title))
+          apiPost<{ title: string }>(API_ROUTES.conversationTitle(newConvoId), {})
+            .then((data) => onConversationTitleGenerated(key, newConvoId!, data.title))
             .catch(() => {})
         }
         // Attach last message id so UI can show feedback
-        fetch(`/api/conversations/${newConvoId}`)
-          .then((r) => r.json())
-          .then((data: { messages?: { id: string }[] }) => {
+        apiGet<{ messages?: { id: string }[] }>(API_ROUTES.conversation(newConvoId!))
+          .then((data) => {
             const list = data.messages
             const last = list?.length ? list[list.length - 1] : null
             if (last?.id) {
@@ -182,9 +176,7 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
 
   const loadConversation = useCallback(async (chatKey: string, dbConversationId: string) => {
     try {
-      const res = await fetch(`/api/conversations/${dbConversationId}`)
-      if (!res.ok) return
-      const data = await res.json()
+      const data = await apiGet<{ messages?: { id: string; role: string; content: string; extractions?: unknown }[] }>(API_ROUTES.conversation(dbConversationId))
       const msgs: ChatMessage[] = (data.messages || []).map(
         (m: { id: string; role: string; content: string; extractions?: unknown }) => ({
           id: m.id,

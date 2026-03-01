@@ -58,6 +58,15 @@ export interface FileItem {
   time: string
 }
 
+// Domain field config (client-safe; API returns this from /api/config)
+export interface DomainFieldConfig {
+  id: string
+  label: string
+  type?: string
+  vocabulary?: string[]
+  suggestions?: string[]
+}
+
 // Preference types (for right sidebar + discover page)
 export type PreferenceStatus = "confirmed" | "potential" | "inferred"
 

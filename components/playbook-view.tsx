@@ -9,6 +9,7 @@ import type { TraceEntry } from "@/lib/mock-data"
 import { NODE_COLORS, STATUS_COLORS, SVG_COLORS } from "@/lib/theme-colors"
 import { useCurrentConversation } from "@/lib/contexts/current-conversation-context"
 import { cn } from "@/lib/utils"
+import { apiGet, API_ROUTES } from "@/lib/api"
 
 type NodeType = "start" | "process" | "warning" | "end" | "knowledge"
 
@@ -48,9 +49,8 @@ export function PlaybookView() {
       setEventsEntries([])
       return
     }
-    fetch(`/api/conversations/${conversationId}/events`)
-      .then((r) => r.json())
-      .then((events: Array<{ time: string; field: string; newValue: string; confidence: number; action: string }>) => {
+    apiGet<Array<{ time: string; field: string; newValue: string; confidence: number; action: string }>>(API_ROUTES.conversationEvents(conversationId))
+      .then((events) => {
         const entries: TraceEntry[] = events.map((e) => ({
           time: new Date(e.time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
           userQuote: "",

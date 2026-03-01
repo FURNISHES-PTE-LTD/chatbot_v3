@@ -7,6 +7,7 @@ import { KEY_INSIGHTS, TOPICS, RECOMMENDATIONS, PREFERENCES, EXPLORE_NEXT } from
 import { PREFERENCE_STATUS } from "@/lib/theme-colors"
 import { useCurrentConversation } from "@/lib/contexts/current-conversation-context"
 import { cn } from "@/lib/utils"
+import { apiGet, API_ROUTES } from "@/lib/api"
 
 interface InsightsData {
   keyInsights: string[]
@@ -39,20 +40,19 @@ interface DiscoverViewProps {
   onSendToChat?: (text: string) => void
 }
 
-const FIELD_LABELS: Record<string, string> = {
-  roomType: "Room type",
-  style: "Design style",
-  budget: "Budget",
-  color: "Color",
-  furniture: "Furniture",
-}
-
 export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
   const { conversationId } = useCurrentConversation()
+  const [configFields, setConfigFields] = useState<{ id: string; label: string }[]>([])
   const [insights, setInsights] = useState<InsightsData | null>(null)
   const [prefs, setPrefs] = useState<{ field: string; value: string; confidence: number; status: string }[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
   const [checkedRecommendations, setCheckedRecommendations] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    apiGet<{ fields?: { id: string; label: string }[] }>(API_ROUTES.config)
+      .then((config) => setConfigFields(config.fields ?? []))
+      .catch(() => setConfigFields([]))
+  }, [])
 
   useEffect(() => {
     if (!conversationId) {
@@ -61,13 +61,16 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
       return
     }
     Promise.all([
-      fetch(`/api/conversations/${conversationId}/insights`).then((r) => r.json()),
-      fetch(`/api/conversations/${conversationId}/preferences`).then((r) => r.json()),
+      apiGet<InsightsData>(API_ROUTES.conversationInsights(conversationId)),
+      apiGet<{ field: string; value: string; confidence: number; status: string }[]>(API_ROUTES.conversationPreferences(conversationId)),
     ]).then(([ins, prefsList]) => {
       setInsights(ins)
       setPrefs(prefsList)
     }).catch(() => {})
   }, [conversationId])
+
+  const getFieldLabel = (fieldId: string) =>
+    configFields.find((f) => f.id === fieldId)?.label ?? fieldId
 
   const toggleRecommendation = (id: string) => {
     setCheckedRecommendations((prev) => {
@@ -202,7 +205,7 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
       </div>
 
       <div className="flex flex-col gap-4">
-        {(prefs.length ? prefs.map((p) => ({ id: p.field, label: FIELD_LABELS[p.field] ?? p.field, type: p.field, confidence: p.confidence, status: p.status, connections: [] as string[], suggestions: [] as { text: string; type: string }[] })) : PREFERENCES).map((pref) => {
+        {(prefs.length ? prefs.map((p) => ({ id: p.field, label: getFieldLabel(p.field), type: p.field, confidence: p.confidence, status: p.status, connections: [] as string[], suggestions: [] as { text: string; type: string }[] })) : PREFERENCES).map((pref) => {
           const t = typeStyles[pref.type] ?? typeStyles.style
           const isExp = expanded === pref.id
           return (

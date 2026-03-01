@@ -14,6 +14,7 @@ import { MainContent } from "./main-content"
 import { Navbar } from "./navbar"
 import { TutorialGuide } from "./tutorial-guide"
 import { useState, useEffect } from "react"
+import { apiGet, API_ROUTES } from "@/lib/api"
 
 function DashboardLayoutInner() {
   const [activeItem, setActiveItem] = useState(DEMO_RECENT_ID)
@@ -24,9 +25,8 @@ function DashboardLayoutInner() {
   const { setShowAssistantPicker } = useWorkspaceContext()
 
   useEffect(() => {
-    fetch("/api/conversations")
-      .then((res) => res.json())
-      .then((convos: { id: string; title: string }[]) => {
+    apiGet<{ id: string; title: string }[]>(API_ROUTES.conversations)
+      .then((convos) => {
         const apiRecents: RecentItem[] = convos.map((c) => ({
           id: `convo-${c.id}`,
           label: c.title,

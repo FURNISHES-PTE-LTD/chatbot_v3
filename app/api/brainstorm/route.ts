@@ -1,16 +1,28 @@
 import { generateText } from "ai"
 import { openai } from "@ai-sdk/openai"
+import { z } from "zod"
 import { prisma } from "@/lib/db"
+import { messagesToTranscript } from "@/lib/api-helpers"
+import { getOpenAIKey, OPENAI_KEY_MISSING_MESSAGE } from "@/lib/openai"
+
+const BrainstormRequestSchema = z.object({
+  conversationId: z.string(),
+  preferences: z.record(z.string()).optional(),
+})
 
 export async function POST(req: Request) {
-  if (!process.env.OPENAI_API_KEY) {
-    return Response.json({ summary: "Add OPENAI_API_KEY to enable brainstorming." }, { status: 503 })
+  if (!getOpenAIKey()) {
+    return Response.json({ error: OPENAI_KEY_MISSING_MESSAGE }, { status: 503 })
   }
   const body = await req.json()
-  const { conversationId, preferences } = body as { conversationId?: string; preferences?: Record<string, string> }
-  if (!conversationId) {
-    return Response.json({ error: "conversationId required" }, { status: 400 })
+  const parsed = BrainstormRequestSchema.safeParse(body)
+  if (!parsed.success) {
+    return Response.json(
+      { error: "Invalid request", details: parsed.error.flatten() },
+      { status: 400 },
+    )
   }
+  const { conversationId, preferences } = parsed.data
 
   const prefs = preferences
     ? Object.entries(preferences)
@@ -24,7 +36,7 @@ export async function POST(req: Request) {
     orderBy: { createdAt: "asc" },
     take: 15,
   })
-  const transcript = messages.map((m) => `${m.role}: ${m.content}`).join("\n")
+  const transcript = messagesToTranscript(messages)
 
   const { text } = await generateText({
     model: openai("gpt-4o-mini"),

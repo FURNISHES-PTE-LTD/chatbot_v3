@@ -3,19 +3,25 @@ import { openai } from "@ai-sdk/openai"
 import { zodSchema } from "ai"
 import { z } from "zod"
 import { prisma } from "@/lib/db"
-import { getDomainConfig } from "@/lib/domain-config"
+import { getFieldIds } from "@/lib/domain-fields"
 import { expandVocabulary } from "@/lib/extraction/vocabulary"
 import { detectNegations, mapNegatedTermsToFields } from "@/lib/extraction/negation"
 import { extractIndirectPreferences } from "@/lib/extraction/semantic-inference"
 import { checkContradiction } from "@/lib/extraction/contradiction"
 import { normalizeValue } from "@/lib/extraction/normalize"
+import { getOpenAIKey, OPENAI_KEY_MISSING_MESSAGE } from "@/lib/openai"
 
-const DEFAULT_FIELD_IDS = ["roomType", "style", "budget", "color", "furniture", "exclusion"] as const
 function getExtractionFieldEnum() {
-  const fieldIds = getDomainConfig().fields?.map((f) => f.id) ?? [...DEFAULT_FIELD_IDS]
-  const tuple = fieldIds.length > 0 ? (fieldIds as [string, ...string[]]) : (DEFAULT_FIELD_IDS as unknown as [string, ...string[]])
+  const fieldIds = getFieldIds()
+  const tuple = (fieldIds.length > 0 ? fieldIds : ["roomType"]) as [string, ...string[]]
   return z.enum(tuple)
 }
+
+const ExtractRequestSchema = z.object({
+  messageId: z.string().optional().nullable(),
+  content: z.string(),
+  conversationId: z.string(),
+})
 
 const ExtractionSchema = z.object({
   entities: z.array(
@@ -37,18 +43,18 @@ function expandMessageVocabulary(content: string): string {
 }
 
 export async function POST(req: Request) {
-  if (!process.env.OPENAI_API_KEY) {
-    return Response.json({ error: "OPENAI_API_KEY not set" }, { status: 503 })
+  if (!getOpenAIKey()) {
+    return Response.json({ error: OPENAI_KEY_MISSING_MESSAGE }, { status: 503 })
   }
   const body = await req.json()
-  const { messageId, content, conversationId } = body as {
-    messageId?: string | null
-    content?: string
-    conversationId?: string
+  const parsed = ExtractRequestSchema.safeParse(body)
+  if (!parsed.success) {
+    return Response.json(
+      { error: "Invalid request", details: parsed.error.flatten() },
+      { status: 400 },
+    )
   }
-  if (!content || !conversationId) {
-    return Response.json({ error: "content and conversationId required" }, { status: 400 })
-  }
+  const { messageId, content, conversationId } = parsed.data
 
   // 1. Pre-process: vocabulary expansion, negations, semantic inference
   const expandedContent = expandMessageVocabulary(content)

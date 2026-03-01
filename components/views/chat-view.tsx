@@ -11,6 +11,7 @@ import { useCurrentConversation } from "@/lib/contexts/current-conversation-cont
 import { parseHighlightedContent } from "@/lib/parse-highlights"
 import type { Workspace, Project } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { apiPost, apiPatch, API_ROUTES } from "@/lib/api"
 import { ChatBubble } from "@/components/chat/chat-bubble"
 import { ChatAvatar } from "@/components/chat/chat-avatar"
 import { Input } from "@/components/ui/input"
@@ -86,13 +87,8 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
 
   useEffect(() => {
     if (currentConvoId && chatMessages.length > 2) {
-      fetch("/api/suggestions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId: currentConvoId }),
-      })
-        .then((r) => r.json())
-        .then((data: { suggestions?: string[] }) => data.suggestions?.length && setSuggestions(data.suggestions))
+      apiPost<{ suggestions?: string[] }>(API_ROUTES.suggestions, { conversationId: currentConvoId })
+        .then((data) => data.suggestions?.length && setSuggestions(data.suggestions))
         .catch(() => {})
     }
   }, [currentConvoId, chatMessages.length])
@@ -112,7 +108,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
     formData.append("file", file)
     if (currentConvoId) formData.append("conversationId", currentConvoId)
     try {
-      const res = await fetch("/api/upload", { method: "POST", body: formData })
+      const res = await fetch(API_ROUTES.upload, { method: "POST", body: formData })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         setInputValue((prev) => prev + (prev ? " " : "") + `[Upload failed: ${(err as { error?: string }).error ?? "unknown"}]`)
@@ -257,11 +253,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                         type="button"
                         onClick={() => {
                           if (!messageId || sent) return
-                          fetch(`/api/messages/${messageId}/feedback`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ rating: "positive" }),
-                          }).then(() => setFeedbackSent((prev) => ({ ...prev, [messageId]: "positive" }))).catch(() => {})
+                          apiPost(API_ROUTES.messageFeedback(messageId), { rating: "positive" }).then(() => setFeedbackSent((prev) => ({ ...prev, [messageId]: "positive" }))).catch(() => {})
                         }}
                         className={cn(
                           "p-1 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer disabled:opacity-50",
@@ -276,11 +268,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                         type="button"
                         onClick={() => {
                           if (!messageId || sent) return
-                          fetch(`/api/messages/${messageId}/feedback`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ rating: "negative" }),
-                          }).then(() => setFeedbackSent((prev) => ({ ...prev, [messageId]: "negative" }))).catch(() => {})
+                          apiPost(API_ROUTES.messageFeedback(messageId), { rating: "negative" }).then(() => setFeedbackSent((prev) => ({ ...prev, [messageId]: "negative" }))).catch(() => {})
                         }}
                         className={cn(
                           "p-1 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer disabled:opacity-50",
@@ -313,11 +301,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                                 onClick={async () => {
                                   if (!currentConvoId) return
                                   for (const e of msg.extractions ?? []) {
-                                    await fetch(`/api/conversations/${currentConvoId}/preferences`, {
-                                      method: "PATCH",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ field: e.field, value: e.text }),
-                                    })
+                                    await apiPatch(API_ROUTES.conversationPreferences(currentConvoId), { field: e.field, value: e.text })
                                   }
                                   if (!isDemoChat) {
                                     setMessagesByKey((prev) => {

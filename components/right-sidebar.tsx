@@ -8,6 +8,8 @@ import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { RefreshCw, Lightbulb, Home, DollarSign, Star, ListChecks, Download } from "lucide-react"
+import type { DomainFieldConfig } from "@/lib/types"
+import { apiGet, apiPost, apiPatch, API_ROUTES } from "@/lib/api"
 
 
 function PreferenceCard({
@@ -98,14 +100,6 @@ interface RightSidebarProps {
   onSendToChat?: (text: string) => void
 }
 
-interface DomainFieldConfig {
-  id: string
-  label: string
-  type?: string
-  vocabulary?: string[]
-  suggestions?: string[]
-}
-
 function optionsFromField(field: DomainFieldConfig | undefined, fallback: string[]): string[] {
   if (!field) return fallback
   const opts = field.suggestions ?? field.vocabulary ?? []
@@ -126,9 +120,8 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
   const [furnitureNeeds, setFurnitureNeeds] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch("/api/config")
-      .then((r) => r.json())
-      .then((config: { fields?: DomainFieldConfig[] }) => setDomainFields(config.fields ?? []))
+    apiGet<{ fields?: DomainFieldConfig[] }>(API_ROUTES.config)
+      .then((config) => setDomainFields(config.fields ?? []))
       .catch(() => setDomainFields([]))
   }, [])
 
@@ -149,9 +142,8 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
       setPreferences({})
       return
     }
-    fetch(`/api/conversations/${conversationId}/preferences`)
-      .then((res) => res.json())
-      .then((prefs: { field: string; value: string }[]) => {
+    apiGet<{ field: string; value: string }[]>(API_ROUTES.conversationPreferences(conversationId))
+      .then((prefs) => {
         const map: Record<string, string> = {}
         const keyToVal: Record<string, string | null> = {
           roomType: null,
@@ -187,11 +179,7 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
       next[field] = value
       setPreferences(next)
       if (conversationId) {
-        await fetch(`/api/conversations/${conversationId}/preferences`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ field, value }),
-        })
+        await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field, value })
       }
     } else {
       delete next[field]
@@ -235,13 +223,10 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
                   if (!conversationId || !onSendToChat) return
                   setBrainstormLoading(true)
                   try {
-                    const res = await fetch("/api/brainstorm", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ conversationId, preferences }),
-                    })
-                    const data = await res.json()
+                    const data = await apiPost<{ summary?: string }>(API_ROUTES.brainstorm, { conversationId, preferences })
                     if (data.summary) onSendToChat(data.summary)
+                  } catch {
+                    // ignore
                   } finally {
                     setBrainstormLoading(false)
                   }
@@ -257,7 +242,7 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
                 <button
                   type="button"
                   onClick={() => {
-                    fetch(`/api/conversations/${conversationId}/export?format=markdown`)
+                    fetch(API_ROUTES.conversationExport(conversationId, "markdown"))
                       .then((r) => r.blob())
                       .then((blob) => {
                         const a = document.createElement("a")

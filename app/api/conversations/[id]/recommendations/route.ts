@@ -4,15 +4,15 @@
  */
 import { prisma } from "@/lib/db"
 import { getDomainConfig } from "@/lib/domain-config"
+import { getPreferencesAsRecord } from "@/lib/api-helpers"
+import { getOpenAIKey, requireOpenAIKey } from "@/lib/openai"
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
-  const prefs = await prisma.preference.findMany({ where: { conversationId: id } })
-  const preferences: Record<string, string> = {}
-  for (const p of prefs) preferences[p.field] = p.value
+  const preferences = await getPreferencesAsRecord(prisma, id)
 
   const domainConfig = getDomainConfig()
   const recCfg = domainConfig.recommendations ?? {}
@@ -20,7 +20,7 @@ export async function GET(
   if (recCfg.enabled === false) {
     return Response.json({ items: [], suggestions: [], budget_breakdown: {} })
   }
-  if (!process.env.OPENAI_API_KEY) {
+  if (!getOpenAIKey()) {
     return Response.json({ items: [], suggestions: [], budget_breakdown: {} })
   }
 
@@ -32,7 +32,7 @@ export async function GET(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${requireOpenAIKey()}`,
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",

@@ -2,6 +2,8 @@
  * Conversation context builder: token-aware history, optional summarization of older messages.
  * Ported from V2 conversation.py.
  */
+import { messagesToTranscript } from "@/lib/api-helpers"
+import { getOpenAIKey } from "@/lib/openai"
 
 const CHARS_PER_TOKEN = 4
 
@@ -23,12 +25,12 @@ export interface BuildContextResult {
  * Summarize a list of messages via LLM into one short paragraph. Call from server only (uses OPENAI_API_KEY).
  */
 async function summarizeMessages(messages: MessageForContext[]): Promise<string> {
-  const key = process.env.OPENAI_API_KEY
+  const key = getOpenAIKey()
   if (!key || messages.length === 0) return ""
   try {
-    const blob = messages
-      .map((m) => `${m.role}: ${(m.content || "").slice(0, 300)}`)
-      .join("\n")
+    const blob = messagesToTranscript(
+      messages.map((m) => ({ role: m.role, content: (m.content || "").slice(0, 300) })),
+    )
     const body = blob.length > 3000 ? blob.slice(-3000) : blob
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -85,7 +87,7 @@ export async function buildContext(
     return { systemSuffix, messages: messages.map((m) => ({ role: m.role, content: m.content || "" })) }
   }
 
-  if (messages.length > summarizeAfter && process.env.OPENAI_API_KEY) {
+  if (messages.length > summarizeAfter && getOpenAIKey()) {
     const toSummarize = messages.slice(0, -summarizeAfter)
     const rest = messages.slice(-summarizeAfter)
     const summary = await summarizeMessages(toSummarize)

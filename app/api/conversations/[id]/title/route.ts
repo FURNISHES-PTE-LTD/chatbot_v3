@@ -1,6 +1,7 @@
 import { generateText } from "ai"
 import { openai } from "@ai-sdk/openai"
 import { prisma } from "@/lib/db"
+import { messagesToTranscript } from "@/lib/api-helpers"
 
 export async function POST(
   _req: Request,
@@ -13,7 +14,7 @@ export async function POST(
     take: 4,
   })
 
-  const preview = messages.map((m) => `${m.role}: ${m.content}`).join("\n")
+  const preview = messagesToTranscript(messages)
 
   const { text: title } = await generateText({
     model: openai("gpt-4o-mini"),

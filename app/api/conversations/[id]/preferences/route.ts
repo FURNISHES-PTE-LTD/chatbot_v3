@@ -1,4 +1,10 @@
+import { z } from "zod"
 import { prisma } from "@/lib/db"
+
+const PreferencesPatchSchema = z.object({
+  field: z.string(),
+  value: z.string().optional(),
+})
 
 export async function GET(
   _req: Request,
@@ -17,10 +23,14 @@ export async function PATCH(
 ) {
   const { id } = await params
   const body = await req.json()
-  const { field, value } = body as { field?: string; value?: string }
-  if (!field) {
-    return Response.json({ error: "field required" }, { status: 400 })
+  const parsed = PreferencesPatchSchema.safeParse(body)
+  if (!parsed.success) {
+    return Response.json(
+      { error: "Invalid request", details: parsed.error.flatten() },
+      { status: 400 },
+    )
   }
+  const { field, value } = parsed.data
   const pref = await prisma.preference.upsert({
     where: {
       conversationId_field: { conversationId: id, field },

@@ -3,6 +3,7 @@
  * If user has change intent ("actually", "instead") -> allow update.
  * Else -> ask confirmation. Ported from V1 contradiction_handler.py.
  */
+import { getFieldLabel } from "@/lib/domain-fields"
 
 const CHANGE_INTENT_PATTERNS = [
   /\bactually\b/,
@@ -19,19 +20,6 @@ export function detectChangeIntent(message: string): boolean {
   if (!message?.trim()) return false
   const lower = message.toLowerCase().trim()
   return CHANGE_INTENT_PATTERNS.some((p) => p.test(lower))
-}
-
-const FIELD_LABELS: Record<string, string> = {
-  designStyle: "design style",
-  style: "design style",
-  roomType: "room type",
-  budgetRange: "budget",
-  budget: "budget",
-  furnitureLayout: "layout",
-  furniture: "furniture",
-  color: "color",
-  colorTheme: "colors",
-  exclusion: "exclusion",
 }
 
 export interface ContradictionResult {
@@ -59,7 +47,7 @@ export function checkContradiction(
   if (curNorm === newNorm) return { hasConflict: false, allowUpdate: true }
   const changeIntent = detectChangeIntent(userMessage)
   if (changeIntent) return { hasConflict: true, allowUpdate: true }
-  const label = FIELD_LABELS[newField] ?? newField
+  const label = getFieldLabel(newField)
   return {
     hasConflict: true,
     confirmMessage: `Do you want to replace your ${label} (${current}) with ${newStr}?`,

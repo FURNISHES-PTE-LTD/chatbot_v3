@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { FILES_DATA } from "@/lib/mock-data"
 import { FILE_PALETTES } from "@/lib/theme-colors"
 import { useCurrentConversation } from "@/lib/contexts/current-conversation-context"
+import { apiGet, API_ROUTES } from "@/lib/api"
 
 export type FileItem = (typeof FILES_DATA)[number]
 
@@ -85,9 +86,8 @@ export function FilesView({ onEditInChat }: FilesViewProps) {
       setApiFiles([])
       return
     }
-    fetch(`/api/conversations/${conversationId}/files`)
-      .then((r) => r.json())
-      .then((list: FileItem[]) => setApiFiles(Array.isArray(list) ? list : []))
+    apiGet<FileItem[]>(API_ROUTES.conversationFiles(conversationId))
+      .then((list) => setApiFiles(Array.isArray(list) ? list : []))
       .catch(() => setApiFiles([]))
   }, [conversationId])
   const fileList = apiFiles.length > 0 ? apiFiles : FILES_DATA

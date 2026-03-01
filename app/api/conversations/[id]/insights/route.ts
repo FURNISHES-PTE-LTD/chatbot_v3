@@ -3,6 +3,8 @@ import { openai } from "@ai-sdk/openai"
 import { zodSchema } from "ai"
 import { z } from "zod"
 import { prisma } from "@/lib/db"
+import { messagesToTranscript } from "@/lib/api-helpers"
+import { getOpenAIKey } from "@/lib/openai"
 
 const InsightsSchema = z.object({
   keyInsights: z.array(z.string()),
@@ -30,9 +32,9 @@ export async function GET(
     })
   }
 
-  const transcript = messages.map((m) => `${m.role}: ${m.content}`).join("\n")
+  const transcript = messagesToTranscript(messages)
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!getOpenAIKey()) {
     return Response.json({
       keyInsights: [],
       topics: [],
