@@ -112,7 +112,7 @@ export function RightSidebar({
             <div className="animate-in fade-in slide-in-from-right-2 duration-200 rounded border border-border bg-muted/30 p-3">
               <div className="flex items-center gap-1.5">
                 <Lightbulb className="h-3.5 w-3.5 text-primary shrink-0" />
-                <h4 className="text-[12px] font-medium text-muted-foreground">Brainstorm for me!!</h4>
+                <h4 className="text-xs font-medium text-muted-foreground">Brainstorm for me!!</h4>
               </div>
             </div>
 

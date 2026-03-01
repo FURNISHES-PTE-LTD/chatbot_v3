@@ -101,7 +101,7 @@ export function LeftSidebar({ onHelpClick }: LeftSidebarProps) {
                                 ? "bg-accent/15 text-primary"
                                 : "text-foreground/80 hover:bg-accent/15 hover:text-foreground",
                             )}
-                            aria-current={activeItem === item.id ? "page" : undefined}
+                            aria-current={activeItem === item.id || activeItem.startsWith(`${item.id}-`) ? "page" : undefined}
                           >
                             <item.icon className="h-4 w-4 shrink-0" />
                             <span className="flex-1">{item.label}</span>

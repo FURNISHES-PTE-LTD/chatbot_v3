@@ -48,6 +48,8 @@ import { CustomizeView } from "./views/customize-view"
 import { SettingsView } from "./views/settings-view"
 import { useState, useEffect } from "react"
 import { SectionLabel } from "@/components/shared/section-label"
+import { ChatBubble } from "@/components/chat/chat-bubble"
+import { ChatAvatar } from "@/components/chat/chat-avatar"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -295,9 +297,9 @@ export function MainContent({
         {messagesToShow.length === 0 ? (
           activeItem === "new-chat" || activeItem.startsWith("recent-") ? (
             <div className="flex-1 flex flex-col items-center justify-center py-8 px-4 text-center">
-              <Avatar className="h-14 w-14 bg-primary mb-4">
-                <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">E</AvatarFallback>
-              </Avatar>
+              <div className="mb-4">
+                <ChatAvatar role="assistant" initial="E" size="lg" />
+              </div>
               <h2 className="text-xl font-semibold text-foreground mb-2">How can I help you today?</h2>
               <p className="text-sm text-muted-foreground mb-6 max-w-md">
                 Tell me about your space and I'll organize your ideas into a design brief.
@@ -335,9 +337,7 @@ export function MainContent({
             if (demoMsg.type === "taskCard") {
               return (
                 <div key={demoMsg.id ?? i} className="flex gap-2.5">
-                  <Avatar className="h-7 w-7 shrink-0 bg-primary">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">E</AvatarFallback>
-                  </Avatar>
+                  <ChatAvatar role="assistant" initial="E" size="md" />
                   <div className="rounded-lg px-3 py-2 max-w-[85%] text-sm bg-card border border-border flex items-start gap-2.5">
                     <div className={cn("w-5 h-5 rounded-full mt-0.5 flex-shrink-0 flex items-center justify-center", demoMsg.taskStatus === "complete" ? "bg-orange-100" : "bg-primary/10")}>
                       <Check className={cn("w-3 h-3", demoMsg.taskStatus === "complete" ? "text-orange-600" : "text-primary")} />
@@ -353,13 +353,11 @@ export function MainContent({
             if (demoMsg.type === "feedback") {
               return (
                 <div key={demoMsg.id ?? i} className="flex gap-2.5">
-                  <Avatar className="h-7 w-7 shrink-0 bg-primary">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">E</AvatarFallback>
-                  </Avatar>
+                  <ChatAvatar role="assistant" initial="E" size="md" />
                   <div className="flex flex-col gap-2 max-w-[85%]">
-                    <div className="rounded-lg border border-border px-3 py-2 text-sm bg-muted text-foreground">
+                    <ChatBubble role="assistant" size="md">
                       {demoMsg.content}
-                    </div>
+                    </ChatBubble>
                     <div className="flex gap-2">
                       <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-600 text-white text-xs font-semibold hover:bg-orange-700 transition-colors cursor-pointer">
                         <Check className="w-3 h-3" /> Looks good
@@ -381,27 +379,11 @@ export function MainContent({
                   isUser ? "flex-row-reverse" : "",
                 )}
               >
-                <Avatar
-                  className={cn(
-                    "h-7 w-7 shrink-0",
-                    isUser ? "bg-accent" : "bg-primary",
-                  )}
-                >
-                  <AvatarFallback className={isUser ? "bg-accent text-accent-foreground text-[10px]" : "bg-primary text-primary-foreground text-[10px]"}>
-                    {isUser ? "U" : "E"}
-                  </AvatarFallback>
-                </Avatar>
+                <ChatAvatar role={isUser ? "user" : "assistant"} initial={isUser ? "Y" : "E"} size="md" />
                 <div className={cn("flex flex-col gap-1", isUser ? "items-end" : "items-start")}>
-                  <div
-                    className={cn(
-                      "rounded-lg px-3 py-2 text-sm",
-                      isUser
-                        ? "rounded-lg border border-border bg-muted/30 text-foreground/80 max-w-[85%] w-fit min-w-[10rem]"
-                        : "rounded-lg border border-border bg-muted/30 text-foreground/80 max-w-[85%]",
-                    )}
-                  >
+                  <ChatBubble role={isUser ? "user" : "assistant"} size="md">
                     {isUser ? msg.content : parseHighlightedContent(msg.content)}
-                  </div>
+                  </ChatBubble>
                   {!isUser && demoMsg.extraction && (
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 border border-orange-100 text-xs text-orange-700 font-medium w-fit">
                       <Check className="w-3 h-3 text-orange-500" /> <span className="text-orange-600 font-normal">Captured:</span> {demoMsg.extraction.value}
@@ -503,14 +485,10 @@ export function MainContent({
                 <div className="space-y-3 max-h-[60vh] overflow-y-auto rounded-lg border border-border bg-card p-3">
                   {projectChatMessages.map((msg, i) => (
                     <div key={i} className={cn("flex gap-2.5", msg.role === "user" ? "flex-row-reverse" : "")}>
-                      <Avatar className={cn("h-6 w-6 shrink-0", msg.role === "user" ? "bg-accent" : "bg-primary")}>
-                        <AvatarFallback className={msg.role === "user" ? "bg-accent text-accent-foreground text-[10px]" : "bg-primary text-primary-foreground text-[10px]"}>
-                          {msg.role === "user" ? "U" : "E"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className={cn("rounded-lg px-2.5 py-1.5 text-xs", msg.role === "user" ? "rounded-lg border border-border bg-muted/30 text-foreground/80 max-w-[85%] w-fit min-w-[10rem]" : "rounded-lg border border-border bg-muted/30 text-foreground/80 max-w-[85%]")}>
+                      <ChatAvatar role={msg.role === "user" ? "user" : "assistant"} initial={msg.role === "user" ? "Y" : "E"} size="sm" />
+                      <ChatBubble role={msg.role === "user" ? "user" : "assistant"} size="sm">
                         {msg.content}
-                      </div>
+                      </ChatBubble>
                     </div>
                   ))}
                 </div>

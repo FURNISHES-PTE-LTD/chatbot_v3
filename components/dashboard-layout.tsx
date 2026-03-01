@@ -24,11 +24,6 @@ const INITIAL_RECENTS: RecentItem[] = [
 
 export function DashboardLayout() {
   const [activeItem, setActiveItem] = useState("recent-living-room")
-  const [tabs, setTabs] = useState([
-    { id: "tab-1", title: "Project 1", section: "recent-living-room" },
-    { id: "tab-2", title: "Project 2", section: "search" },
-  ])
-  const [activeTabId, setActiveTabId] = useState("tab-1")
   const [isTutorialOpen, setIsTutorialOpen] = useState(false)
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(DEFAULT_WORKSPACE)
   const [currentProject, setCurrentProject] = useState<Project | null>(DEFAULT_PROJECT)
@@ -48,41 +43,13 @@ export function DashboardLayout() {
     setCurrentProject(null)
   }
 
-  const addNewTab = () => {
-    const newTab = {
-      id: `tab-${Date.now()}`,
-      title: `Project ${tabs.length + 1}`,
-      section: "search",
-    }
-    setTabs([...tabs, newTab])
-    setActiveTabId(newTab.id)
-    setActiveItem("search")
-  }
-
-  const closeTab = (tabId: string) => {
-    const newTabs = tabs.filter((tab) => tab.id !== tabId)
-    if (newTabs.length === 0) {
-      setTabs([{ id: "tab-1", title: "Project 1", section: "search" }])
-      setActiveTabId("tab-1")
-      setActiveItem("search")
-    } else {
-      setTabs(newTabs)
-      if (activeTabId === tabId) {
-        setActiveTabId(newTabs[0].id)
-        setActiveItem(newTabs[0].section)
-      }
-    }
-  }
-
   const handleItemClick = (id: string, label: string) => {
     let itemId = id
 
-    // New Chat: add a new recent and open its chat interface
     if (id === "new-chat") {
       const newId = `recent-${Date.now()}`
       setRecents((prev) => [{ id: newId, label: "New Chat" }, ...prev])
       setActiveItem(newId)
-      setTabs((t) => t.map((tab) => (tab.id === activeTabId ? { ...tab, section: newId } : tab)))
       return
     }
 
@@ -93,15 +60,6 @@ export function DashboardLayout() {
       setWorkspaceListKey((k) => k + 1)
     }
     setActiveItem(itemId)
-    setTabs(tabs.map((tab) => (tab.id === activeTabId ? { ...tab, section: itemId } : tab)))
-  }
-
-  const handleTabSwitch = (tabId: string) => {
-    setActiveTabId(tabId)
-    const tab = tabs.find((t) => t.id === tabId)
-    if (tab) {
-      setActiveItem(tab.section)
-    }
   }
 
   const handleFurnishesClick = () => {
@@ -110,11 +68,6 @@ export function DashboardLayout() {
 
   const handleHelpClick = () => {
     setIsTutorialOpen(true)
-  }
-
-  const handleCartClick = () => {
-    setActiveItem("cart")
-    setTabs(tabs.map((tab) => (tab.id === activeTabId ? { ...tab, section: "cart" } : tab)))
   }
 
   const handleChangeAssistantClick = () => {
@@ -161,14 +114,12 @@ export function DashboardLayout() {
                 const newId = `recent-${Date.now()}`
                 setRecents((prev) => [{ id: newId, label: "New Chat" }, ...prev])
                 setActiveItem(newId)
-                setTabs((t) => t.map((tab) => (tab.id === activeTabId ? { ...tab, section: newId } : tab)))
               }}
               onSendToChatFromDiscover={(text) => {
                 setPendingChatMessage(text)
                 const newId = `recent-${Date.now()}`
                 setRecents((prev) => [{ id: newId, label: "New Chat" }, ...prev])
                 setActiveItem(newId)
-                setTabs((t) => t.map((tab) => (tab.id === activeTabId ? { ...tab, section: newId } : tab)))
               }}
             />
           </div>

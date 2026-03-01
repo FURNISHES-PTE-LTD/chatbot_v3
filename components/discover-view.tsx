@@ -21,7 +21,9 @@ function StatusDot({ status, size = "sm" }: { status: string; size?: "sm" | "md"
         colors[status] || "bg-border",
         sizes[size],
       )}
-    />
+    >
+      <span className="sr-only">{status}</span>
+    </span>
   )
 }
 

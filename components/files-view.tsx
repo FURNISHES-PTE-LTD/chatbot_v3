@@ -5,6 +5,7 @@ import { Download, Edit3 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { FILES_DATA } from "@/lib/mock-data"
+import { FILE_PALETTES } from "@/lib/theme-colors"
 
 export type FileItem = (typeof FILES_DATA)[number]
 
@@ -12,23 +13,15 @@ interface FilesViewProps {
   onEditInChat?: (title: string) => void
 }
 
-const THUMB_COLORS: Record<string, { bg: string; accent: string }> = {
-  mood: { bg: "#E8D5C4", accent: "#C86F4A" },
-  plan: { bg: "#D6E8E0", accent: "#4DB6AC" },
-  palette: { bg: "#E8D5C4", accent: "#C17B4A" },
-  sofa: { bg: "#D6E0E8", accent: "#5C9AC5" },
-  plan2: { bg: "#D6E8E0", accent: "#4DB6AC" },
-}
-
 function FileThumbnail({ file }: { file: FileItem }) {
-  const c = THUMB_COLORS[file.thumb] || THUMB_COLORS.mood
+  const c = FILE_PALETTES[file.thumb as keyof typeof FILE_PALETTES] ?? FILE_PALETTES.mood
   return (
     <div
       className="w-full aspect-[16/10] rounded-xl flex items-center justify-center relative overflow-hidden"
       style={{ background: c.bg }}
     >
       {file.type === "floorplan" ? (
-        <svg width="80%" height="80%" viewBox="0 0 200 120">
+        <svg width="80%" height="80%" viewBox="0 0 200 120" aria-hidden="true">
           <rect x="10" y="10" width="180" height="100" rx="2" fill="none" stroke={c.accent} strokeWidth="2" />
           <rect x="30" y="60" width="50" height="30" rx="4" fill={c.accent + "33"} stroke={c.accent} strokeWidth="1" />
           <text x="55" y="80" textAnchor="middle" fontSize="8" fill={c.accent} fontFamily="system-ui">
@@ -37,7 +30,7 @@ function FileThumbnail({ file }: { file: FileItem }) {
           <rect x="90" y="45" width="25" height="25" rx="3" fill={c.accent + "22"} stroke={c.accent} strokeWidth="1" />
         </svg>
       ) : (
-        <svg width="60%" height="60%" viewBox="0 0 100 60">
+        <svg width="60%" height="60%" viewBox="0 0 100 60" aria-hidden="true">
           <rect x="5" y="5" width="90" height="50" rx="6" fill={c.accent + "22"} />
           <circle cx="30" cy="25" r="8" fill={c.accent + "44"} />
           <circle cx="65" cy="20" r="5" fill={c.accent + "33"} />
@@ -58,7 +51,7 @@ function FilePreviewLarge({ file }: { file: FileItem }) {
   return (
     <div className="w-full h-[360px] rounded-2xl flex items-center justify-center" style={{ background: c.bg }}>
       {file.type === "floorplan" ? (
-        <svg width="80%" height="80%" viewBox="0 0 400 240">
+        <svg width="80%" height="80%" viewBox="0 0 400 240" aria-hidden="true">
           <rect x="20" y="20" width="360" height="200" rx="3" fill="none" stroke={c.accent} strokeWidth="2.5" />
           <rect x="60" y="120" width="100" height="60" rx="6" fill={c.accent + "33"} stroke={c.accent} strokeWidth="1.5" />
           <text x="110" y="158" textAnchor="middle" fontSize="14" fill={c.accent} fontWeight="600" fontFamily="system-ui">
@@ -70,7 +63,7 @@ function FilePreviewLarge({ file }: { file: FileItem }) {
           </text>
         </svg>
       ) : (
-        <svg width="60%" height="60%" viewBox="0 0 200 120">
+        <svg width="60%" height="60%" viewBox="0 0 200 120" aria-hidden="true">
           <rect x="10" y="10" width="180" height="100" rx="10" fill={c.accent + "22"} />
           <circle cx="60" cy="50" r="16" fill={c.accent + "44"} />
           <circle cx="130" cy="40" r="10" fill={c.accent + "33"} />

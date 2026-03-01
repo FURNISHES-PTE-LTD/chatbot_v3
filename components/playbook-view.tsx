@@ -5,7 +5,7 @@ import { RotateCcw, RotateCw, Sparkles, Plus, Check, X, ZoomIn, ZoomOut } from "
 import { SectionLabel } from "@/components/shared/section-label"
 import { INIT_WF_NODES, INIT_WF_EDGES, NODE_TRACES } from "@/lib/mock-data"
 import type { WfNode, WfEdge } from "@/lib/mock-data"
-import { NODE_COLORS, STATUS_COLORS } from "@/lib/theme-colors"
+import { NODE_COLORS, STATUS_COLORS, SVG_COLORS } from "@/lib/theme-colors"
 import { cn } from "@/lib/utils"
 
 type NodeType = "start" | "process" | "warning" | "end" | "knowledge"
@@ -117,7 +117,7 @@ export function PlaybookView() {
           <div
             className="absolute inset-0 opacity-30 pointer-events-none"
             style={{
-              backgroundImage: "radial-gradient(circle, #D9D5D0 0.8px, transparent 0.8px)",
+              backgroundImage: `radial-gradient(circle, ${SVG_COLORS.grid} 0.8px, transparent 0.8px)`,
               backgroundSize: "24px 24px",
             }}
           />
@@ -148,14 +148,14 @@ export function PlaybookView() {
                     <path
                       d={`M ${fx} ${fy} C ${fx} ${my}, ${tx} ${my}, ${tx} ${ty}`}
                       fill="none"
-                      stroke="#E8E4DE"
+                      stroke={SVG_COLORS.edge}
                       strokeWidth={1.5}
                       strokeDasharray="6 4"
                     />
-                    <circle cx={fx} cy={fy} r={4.5} fill="#FFFFFF" stroke="#B5B0AA" strokeWidth={1.5} />
-                    <circle cx={fx} cy={fy} r={2} fill="#1A1A1A" />
-                    <circle cx={tx} cy={ty} r={4.5} fill="#FFFFFF" stroke="#B5B0AA" strokeWidth={1.5} />
-                    <circle cx={tx} cy={ty} r={2} fill="#B5B0AA" />
+                    <circle cx={fx} cy={fy} r={4.5} fill={SVG_COLORS.dotFill} stroke={SVG_COLORS.dotStroke} strokeWidth={1.5} />
+                    <circle cx={fx} cy={fy} r={2} fill={SVG_COLORS.dotCenter} />
+                    <circle cx={tx} cy={ty} r={4.5} fill={SVG_COLORS.dotFill} stroke={SVG_COLORS.dotStroke} strokeWidth={1.5} />
+                    <circle cx={tx} cy={ty} r={2} fill={SVG_COLORS.dotStroke} />
                     {edge.label && (
                       <g
                         role="button"
@@ -172,8 +172,8 @@ export function PlaybookView() {
                           width={edge.label.length * 8 + 32}
                           height={24}
                           rx={12}
-                          fill="#FFFFFF"
-                          stroke="#E8E4DE"
+                          fill={SVG_COLORS.dotFill}
+                          stroke={SVG_COLORS.edge}
                           strokeWidth={1}
                         />
                         {editingEdge === edge.id ? (
@@ -271,7 +271,7 @@ export function PlaybookView() {
                     </text>
                     {isKb && (
                       <>
-                        <rect x={node.x + node.w - 58} y={node.y + 6} width={48} height={18} rx={4} fill="#FFFFFF" />
+                        <rect x={node.x + node.w - 58} y={node.y + 6} width={48} height={18} rx={4} fill={SVG_COLORS.dotFill} />
                         <text
                           x={node.x + node.w - 34}
                           y={node.y + 18}
@@ -324,8 +324,8 @@ export function PlaybookView() {
                             width={26}
                             height={26}
                             rx={6}
-                            fill="#FFFFFF"
-                            stroke="#E8E4DE"
+                            fill={SVG_COLORS.dotFill}
+                            stroke={SVG_COLORS.edge}
                             strokeWidth={1}
                           />
                           <text x={node.x + node.w + 19} y={node.y + 27} textAnchor="middle" fontSize={12} fill="#7A756E">

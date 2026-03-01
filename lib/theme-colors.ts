@@ -23,6 +23,15 @@ export const FILE_PALETTES = {
   plan2: { bg: "#E8E4DE", accent: "#7A756E" },
 } as const
 
+// Playbook SVG drawing colors
+export const SVG_COLORS = {
+  grid: "#D9D5D0",
+  edge: "#E8E4DE",
+  dotFill: "#FFFFFF",
+  dotStroke: "#B5B0AA",
+  dotCenter: "#1A1A1A",
+} as const
+
 // Preference status dot colors (Tailwind classes)
 export const PREFERENCE_STATUS = {
   confirmed: "bg-emerald-500",
