@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Sparkles } from "lucide-react"
 import type { Assistant } from "@/lib/types"
+import { useWorkspaceContext } from "@/lib/contexts/workspace-context"
 import { SectionLabel } from "@/components/shared/section-label"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
@@ -36,12 +37,8 @@ const ASSISTANT_STYLE_OPTIONS: { value: AssistantStyleFocus | ""; label: string 
 
 const ALL_TRAITS = Array.from(new Set(MOCK_ASSISTANTS.flatMap((a) => a.traits))).sort()
 
-interface AssistantPickerViewProps {
-  selectedAssistant?: Assistant | null
-  onSelectAssistant?: (assistant: Assistant) => void
-}
-
-export function AssistantPickerView({ selectedAssistant = null, onSelectAssistant }: AssistantPickerViewProps) {
+export function AssistantPickerView() {
+  const { selectedAssistant, setSelectedAssistant, setShowAssistantPicker } = useWorkspaceContext()
   const [styleFilter, setStyleFilter] = useState<AssistantStyleFocus | "">("")
   const [traits, setTraits] = useState<string[]>([])
 
@@ -136,7 +133,10 @@ export function AssistantPickerView({ selectedAssistant = null, onSelectAssistan
               <button
                 key={assistant.id}
                 type="button"
-                onClick={() => onSelectAssistant?.({ id: assistant.id, name: assistant.name, tagline: assistant.tagline })}
+                onClick={() => {
+                setSelectedAssistant({ id: assistant.id, name: assistant.name, tagline: assistant.tagline })
+                setShowAssistantPicker(false)
+              }}
                 className={cn(
                   "flex flex-col items-start gap-3 rounded-lg border bg-card p-4 text-left transition-all duration-200 cursor-pointer",
                   selectedAssistant?.id === assistant.id

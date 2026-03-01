@@ -17,8 +17,9 @@ import {
   Home,
 } from "lucide-react"
 import { useAppContext } from "@/lib/contexts/app-context"
+import { useWorkspaceContext } from "@/lib/contexts/workspace-context"
 import { ChatProvider } from "@/lib/contexts/chat-context"
-import type { Workspace, Project, Assistant } from "@/lib/types"
+import type { Workspace } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { FilesView } from "./files-view"
 import { DiscoverView } from "./discover-view"
@@ -35,13 +36,6 @@ import { useState, useEffect } from "react"
 
 interface MainContentProps {
   workspaceListKey?: number
-  currentWorkspace?: Workspace | null
-  currentProject?: Project | null
-  onSelectWorkspaceProject?: (workspace: Workspace, project: Project) => void
-  onClearWorkspaceProject?: () => void
-  showAssistantPicker?: boolean
-  onSelectAssistant?: (assistant: Assistant) => void
-  selectedAssistant?: Assistant
   pendingChatMessage?: string | null
   onClearPendingChatMessage?: () => void
   onEditInChatFromFiles?: (title: string) => void
@@ -50,19 +44,19 @@ interface MainContentProps {
 
 export function MainContent({
   workspaceListKey = 0,
-  currentWorkspace = null,
-  currentProject = null,
-  onSelectWorkspaceProject,
-  onClearWorkspaceProject,
-  showAssistantPicker = false,
-  onSelectAssistant,
-  selectedAssistant,
   pendingChatMessage = null,
   onClearPendingChatMessage,
   onEditInChatFromFiles,
   onSendToChatFromDiscover,
 }: MainContentProps) {
   const { activeItem, recents = [], onItemClick } = useAppContext()
+  const {
+    currentWorkspace,
+    currentProject,
+    showAssistantPicker,
+    selectWorkspaceProject,
+    clearWorkspaceProject,
+  } = useWorkspaceContext()
   const [isSaved, setIsSaved] = useState(false)
   const [selectedWorkspaceForView, setSelectedWorkspaceForView] = useState<Workspace | null>(null)
 
@@ -130,8 +124,8 @@ export function MainContent({
           onSelectWorkspaceForView={setSelectedWorkspaceForView}
           currentWorkspace={currentWorkspace}
           currentProject={currentProject}
-          onSelectWorkspaceProject={onSelectWorkspaceProject}
-          onClearWorkspaceProject={onClearWorkspaceProject}
+          onSelectWorkspaceProject={selectWorkspaceProject}
+          onClearWorkspaceProject={clearWorkspaceProject}
         />
       )
     }
@@ -182,10 +176,7 @@ export function MainContent({
     >
       <div data-tutorial="main-content" className="h-full overflow-hidden flex flex-col">
         {showAssistantPicker ? (
-          <AssistantPickerView
-            selectedAssistant={selectedAssistant}
-            onSelectAssistant={onSelectAssistant}
-          />
+          <AssistantPickerView />
         ) : (
           <>
             <div className="flex h-10 items-center justify-between px-3 border-b border-border">

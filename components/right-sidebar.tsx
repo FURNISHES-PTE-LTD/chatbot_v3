@@ -1,16 +1,12 @@
 "use client"
 
 import { IconButton } from "@/components/shared/icon-button"
-import type { Assistant } from "@/lib/types"
+import { useWorkspaceContext } from "@/lib/contexts/workspace-context"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { RefreshCw, Lightbulb, Home, DollarSign, Star, ListChecks } from "lucide-react"
 
-interface RightSidebarProps {
-  onChangeAssistantClick?: () => void
-  selectedAssistant?: Assistant
-}
 
 function PreferenceCard({
   title,
@@ -81,10 +77,8 @@ const STYLE_OPTIONS = ["modern", "traditional", "minimalist", "scandinavian", "i
 const COLOR_OPTIONS = ["blue", "green", "neutral", "warm tones", "cool tones"]
 const FURNITURE_OPTIONS = ["sofa", "bed", "dining table", "coffee table", "lighting"]
 
-export function RightSidebar({
-  onChangeAssistantClick,
-  selectedAssistant = { id: "eva", name: "Eva", tagline: "[the Assistant]" },
-}: RightSidebarProps) {
+export function RightSidebar() {
+  const { selectedAssistant, setShowAssistantPicker } = useWorkspaceContext()
   const [roomType, setRoomType] = useState<string | null>("kitchen")
   const [budget, setBudget] = useState<string | null>(null)
   const [designStyle, setDesignStyle] = useState<string | null>(null)
@@ -103,7 +97,7 @@ export function RightSidebar({
           <div className="text-sm font-semibold text-foreground truncate">{selectedAssistant.name}</div>
           <div className="text-[10px] text-muted-foreground truncate">{selectedAssistant.tagline}</div>
         </div>
-        <IconButton icon={RefreshCw} title="Change AI assistant" onClick={onChangeAssistantClick} />
+        <IconButton icon={RefreshCw} title="Change AI assistant" onClick={() => setShowAssistantPicker(true)} />
       </div>
 
       <div className="flex-1 overflow-y-auto p-3">
