@@ -38,7 +38,7 @@ function PreferenceCard({
   return (
     <div
       className={cn(
-        "animate-in fade-in slide-in-from-right-2 duration-300 rounded border p-2.5 transition-all duration-300 hover:border-primary/40",
+        "animate-in fade-in slide-in-from-right-2 duration-200 rounded border p-2.5 transition-all duration-200 hover:border-primary/40",
         isComplete ? `border-primary/40 ${bgClass}` : `border-border/50 ${bgClass}`,
       )}
     >
@@ -80,7 +80,6 @@ const COLOR_OPTIONS = ["blue", "green", "neutral", "warm tones", "cool tones"]
 const FURNITURE_OPTIONS = ["sofa", "bed", "dining table", "coffee table", "lighting"]
 
 export function RightSidebar({
-  onClose,
   onChangeAssistantClick,
   selectedAssistant = { id: "eva", name: "Eva", tagline: "[the Assistant]" },
 }: RightSidebarProps) {
@@ -103,6 +102,7 @@ export function RightSidebar({
           <div className="text-[10px] text-muted-foreground truncate">{selectedAssistant.tagline}</div>
         </div>
         <button
+          type="button"
           onClick={onChangeAssistantClick}
           className="flex items-center justify-center h-7 w-7 rounded hover:bg-accent/10 text-muted-foreground hover:text-primary transition-all duration-200 cursor-pointer shrink-0"
           title="Change AI assistant"
@@ -114,7 +114,7 @@ export function RightSidebar({
       <div className="flex-1 overflow-y-auto p-3">
           <div className="space-y-3">
             {/* Brainstorm card */}
-            <div className="animate-in fade-in slide-in-from-right-2 duration-300 rounded border border-border bg-muted/30 p-3">
+            <div className="animate-in fade-in slide-in-from-right-2 duration-200 rounded border border-border bg-muted/30 p-3">
               <div className="flex items-center gap-1.5">
                 <Lightbulb className="h-3.5 w-3.5 text-primary shrink-0" />
                 <h4 className="text-[12px] font-medium text-muted-foreground">Brainstorm for me!!</h4>

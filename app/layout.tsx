@@ -4,7 +4,7 @@ import { Manrope } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 
-const _manrope = Manrope({ subsets: ["latin"] })
+const manrope = Manrope({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "v0 App",
@@ -36,7 +36,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`font-sans antialiased ${_manrope.className}`}>
+      <body className={`font-sans antialiased ${manrope.className}`}>
         {children}
         <Analytics />
       </body>

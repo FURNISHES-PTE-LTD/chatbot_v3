@@ -68,7 +68,7 @@ function ConfBar({ value }: { value: number }) {
   )
 }
 
-function Badge({ children, variant = "muted" }: { children: React.ReactNode; variant?: "muted" }) {
+function TraceBadge({ children, variant = "muted" }: { children: React.ReactNode; variant?: "muted" }) {
   return (
     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wide border bg-muted text-muted-foreground border-border">
       {children}
@@ -214,7 +214,9 @@ export function PlaybookView() {
                     <circle cx={tx} cy={ty} r={2} fill="#B5B0AA" />
                     {edge.label && (
                       <g
-                        style={{ cursor: "pointer" }}
+                        role="button"
+                        tabIndex={0}
+                        className="cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation()
                           setEditingEdge(editingEdge === edge.id ? null : edge.id)
@@ -272,8 +274,11 @@ export function PlaybookView() {
                 return (
                   <g
                     key={node.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={node.title}
+                    className="cursor-pointer"
                     onClick={() => setSelectedNode(isSel ? null : node.id)}
-                    style={{ cursor: "pointer" }}
                   >
                     {isSel && (
                       <rect
@@ -354,11 +359,14 @@ export function PlaybookView() {
                     {isSel && !isKb && (
                       <g>
                         <g
+                          role="button"
+                          tabIndex={0}
+                          aria-label="Duplicate node"
+                          className="cursor-pointer"
                           onClick={(e) => {
                             e.stopPropagation()
                             duplicateNode(node.id)
                           }}
-                          style={{ cursor: "pointer" }}
                         >
                           <rect
                             x={node.x + node.w + 6}
@@ -375,11 +383,14 @@ export function PlaybookView() {
                           </text>
                         </g>
                         <g
+                          role="button"
+                          tabIndex={0}
+                          aria-label="Delete node"
+                          className="cursor-pointer"
                           onClick={(e) => {
                             e.stopPropagation()
                             deleteNode(node.id)
                           }}
-                          style={{ cursor: "pointer" }}
                         >
                           <rect
                             x={node.x + node.w + 6}
@@ -470,7 +481,7 @@ export function PlaybookView() {
                       ) : (
                         <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
                           {entry.text}
-                          {"action" in entry && entry.action && <Badge variant="muted">{entry.action}</Badge>}
+                          {"action" in entry && entry.action && <TraceBadge variant="muted">{entry.action}</TraceBadge>}
                         </div>
                       )}
                     </div>

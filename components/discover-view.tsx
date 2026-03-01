@@ -144,7 +144,7 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Compass className="w-3.5 h-3.5 text-primary" />
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+            <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
               Key insights
             </span>
           </div>
@@ -161,7 +161,7 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Hash className="w-3.5 h-3.5 text-muted-foreground" />
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+            <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
               Topics
             </span>
           </div>
@@ -180,7 +180,7 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
         <div>
           <div className="flex items-center gap-2 mb-3">
             <ListChecks className="w-3.5 h-3.5 text-primary" />
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+            <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
               Recommendations
             </span>
           </div>
@@ -300,7 +300,7 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
                         Connected to
                       </span>
                     </div>
@@ -319,7 +319,7 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <Lightbulb className="w-3.5 h-3.5 text-primary" />
-                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
                         Eva suggests
                       </span>
                     </div>

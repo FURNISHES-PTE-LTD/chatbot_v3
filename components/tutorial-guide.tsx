@@ -167,12 +167,12 @@ export function TutorialGuide({ isOpen, onClose }: TutorialGuideProps) {
   return (
     <>
       {/* Dark overlay */}
-      <div className="fixed inset-0 bg-black/25 z-50 animate-in fade-in duration-300" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/25 z-50 animate-in fade-in duration-200" onClick={onClose} />
 
       {/* Highlight the target element */}
       {targetRect && (
         <div
-          className="fixed z-50 pointer-events-none animate-in fade-in duration-300"
+          className="fixed z-50 pointer-events-none animate-in fade-in duration-200"
           style={{
             left: `${targetRect.left - 4}px`,
             top: `${targetRect.top - 4}px`,
@@ -187,10 +187,11 @@ export function TutorialGuide({ isOpen, onClose }: TutorialGuideProps) {
 
       {/* Tutorial tooltip */}
       <div
-        className="fixed z-50 w-80 bg-card border border-border rounded-lg shadow-2xl p-6 animate-in fade-in zoom-in duration-300"
+        className="fixed z-50 w-80 bg-card border border-border rounded-lg shadow-2xl p-6 animate-in fade-in zoom-in duration-200"
         style={getTooltipPosition()}
       >
         <button
+          type="button"
           onClick={onClose}
           className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         >
@@ -208,7 +209,7 @@ export function TutorialGuide({ isOpen, onClose }: TutorialGuideProps) {
               <div
                 key={index}
                 className={cn(
-                  "h-1.5 w-8 rounded-full transition-all duration-300",
+                  "h-1.5 w-8 rounded-full transition-all duration-200",
                   index === currentStep ? "bg-primary" : "bg-muted",
                 )}
               />
@@ -221,6 +222,7 @@ export function TutorialGuide({ isOpen, onClose }: TutorialGuideProps) {
 
         <div className="flex gap-2">
           <button
+            type="button"
             onClick={handleSkip}
             className="flex-1 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
@@ -228,6 +230,7 @@ export function TutorialGuide({ isOpen, onClose }: TutorialGuideProps) {
           </button>
           {currentStep > 0 && (
             <button
+              type="button"
               onClick={handlePrevious}
               className="flex-1 px-4 py-2 text-sm font-medium border border-border rounded hover:bg-accent transition-colors cursor-pointer"
             >
@@ -235,6 +238,7 @@ export function TutorialGuide({ isOpen, onClose }: TutorialGuideProps) {
             </button>
           )}
           <button
+            type="button"
             onClick={handleNext}
             className="flex-1 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors cursor-pointer"
           >

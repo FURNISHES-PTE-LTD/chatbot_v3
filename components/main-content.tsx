@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { DEMO_RECENT_ID } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import {
@@ -33,11 +34,12 @@ import {
   GitBranch,
   Lightbulb,
 } from "lucide-react"
-import { FilesView } from "@/components/files-view"
-import { DiscoverView } from "@/components/discover-view"
-import { PlaybookView } from "@/components/playbook-view"
+import { FilesView } from "./files-view"
+import { DiscoverView } from "./discover-view"
+import { PlaybookView } from "./playbook-view"
 import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 export type AssistantStyleFocus = "creative" | "minimal" | "practical"
@@ -313,7 +315,7 @@ export function MainContent({
   }
 
   const getActiveIcon = () => {
-    const iconMap: Record<string, any> = {
+    const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
       "new-chat": MessageSquarePlus,
       search: Search,
       files: FolderOpen,
@@ -569,7 +571,7 @@ export function MainContent({
                   {projectChatMessages.map((msg, i) => (
                     <div key={i} className={cn("flex gap-2.5", msg.role === "user" ? "flex-row-reverse" : "")}>
                       <Avatar className={cn("h-6 w-6 shrink-0", msg.role === "user" ? "bg-accent" : "bg-primary")}>
-                        <AvatarFallback className={msg.role === "user" ? "bg-accent text-accent-foreground text-[9px]" : "bg-primary text-primary-foreground text-[9px]"}>
+                        <AvatarFallback className={msg.role === "user" ? "bg-accent text-accent-foreground text-[10px]" : "bg-primary text-primary-foreground text-[10px]"}>
                           {msg.role === "user" ? "U" : "E"}
                         </AvatarFallback>
                       </Avatar>
@@ -675,6 +677,7 @@ export function MainContent({
                 ].map((search, index) => (
                   <button
                     key={index}
+                    type="button"
                     className="w-full text-left px-4 py-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 text-sm text-foreground transition-all duration-200 cursor-pointer"
                   >
                     {search}
@@ -692,6 +695,7 @@ export function MainContent({
                 {["Mid-century modern", "Velvet sofa", "Accent chairs", "Console table", "Area rugs"].map((tag) => (
                   <button
                     key={tag}
+                    type="button"
                     className="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-all duration-200 cursor-pointer"
                   >
                     {tag}
@@ -775,7 +779,8 @@ export function MainContent({
                   {["Metric", "Imperial"].map((unit) => (
                     <button
                       key={unit}
-                      className="rounded bg-secondary/50 px-3 py-1.5 text-xs transition-all duration-300 hover:bg-accent hover:text-accent-foreground"
+                      type="button"
+                      className="rounded bg-secondary/50 px-3 py-1.5 text-xs transition-colors duration-200 hover:bg-accent hover:text-accent-foreground"
                     >
                       {unit}
                     </button>
@@ -821,9 +826,7 @@ export function MainContent({
                       <p className="text-sm font-medium text-foreground">Compact mode</p>
                       <p className="text-xs text-muted-foreground">Reduce spacing for denser layouts</p>
                     </div>
-                    <button className="w-11 h-6 rounded-full bg-muted relative transition-colors hover:bg-muted/80 cursor-pointer">
-                      <div className="absolute left-1 top-1 h-4 w-4 rounded-full bg-background transition-transform" />
-                    </button>
+                    <Switch />
                   </div>
                 </div>
               </div>
@@ -837,9 +840,7 @@ export function MainContent({
                       <p className="text-sm font-medium text-foreground">Email notifications</p>
                       <p className="text-xs text-muted-foreground">Receive updates via email</p>
                     </div>
-                    <button className="w-11 h-6 rounded-full bg-primary relative transition-colors hover:bg-primary/90 cursor-pointer">
-                      <div className="absolute right-1 top-1 h-4 w-4 rounded-full bg-white transition-transform" />
-                    </button>
+                    <Switch defaultChecked />
                   </div>
 
                   <div className="flex items-center justify-between py-2">
@@ -847,9 +848,7 @@ export function MainContent({
                       <p className="text-sm font-medium text-foreground">Push notifications</p>
                       <p className="text-xs text-muted-foreground">Browser push notifications</p>
                     </div>
-                    <button className="w-11 h-6 rounded-full bg-primary relative transition-colors hover:bg-primary/90 cursor-pointer">
-                      <div className="absolute right-1 top-1 h-4 w-4 rounded-full bg-white transition-transform" />
-                    </button>
+                    <Switch defaultChecked />
                   </div>
 
                   <div className="flex items-center justify-between py-2">
@@ -857,9 +856,7 @@ export function MainContent({
                       <p className="text-sm font-medium text-foreground">Project updates</p>
                       <p className="text-xs text-muted-foreground">Get notified about project changes</p>
                     </div>
-                    <button className="w-11 h-6 rounded-full bg-primary relative transition-colors hover:bg-primary/90 cursor-pointer">
-                      <div className="absolute right-1 top-1 h-4 w-4 rounded-full bg-white transition-transform" />
-                    </button>
+                    <Switch defaultChecked />
                   </div>
                 </div>
               </div>
@@ -873,9 +870,7 @@ export function MainContent({
                       <p className="text-sm font-medium text-foreground">Auto-suggestions</p>
                       <p className="text-xs text-muted-foreground">Get AI-powered recommendations</p>
                     </div>
-                    <button className="w-11 h-6 rounded-full bg-primary relative transition-colors hover:bg-primary/90 cursor-pointer">
-                      <div className="absolute right-1 top-1 h-4 w-4 rounded-full bg-white transition-transform" />
-                    </button>
+                    <Switch defaultChecked />
                   </div>
 
                   <div className="flex items-center justify-between py-2">
@@ -883,9 +878,7 @@ export function MainContent({
                       <p className="text-sm font-medium text-foreground">Voice responses</p>
                       <p className="text-xs text-muted-foreground">Enable voice assistant</p>
                     </div>
-                    <button className="w-11 h-6 rounded-full bg-muted relative transition-colors hover:bg-muted/80 cursor-pointer">
-                      <div className="absolute left-1 top-1 h-4 w-4 rounded-full bg-background transition-transform" />
-                    </button>
+                    <Switch />
                   </div>
 
                   <div className="flex items-center justify-between py-2">
@@ -913,9 +906,7 @@ export function MainContent({
                       <p className="text-sm font-medium text-foreground">Analytics tracking</p>
                       <p className="text-xs text-muted-foreground">Help improve our service</p>
                     </div>
-                    <button className="w-11 h-6 rounded-full bg-primary relative transition-colors hover:bg-primary/90 cursor-pointer">
-                      <div className="absolute right-1 top-1 h-4 w-4 rounded-full bg-white transition-transform" />
-                    </button>
+                    <Switch defaultChecked />
                   </div>
 
                   <div className="flex items-center justify-between py-2">
@@ -923,9 +914,7 @@ export function MainContent({
                       <p className="text-sm font-medium text-foreground">Auto-save projects</p>
                       <p className="text-xs text-muted-foreground">Automatically save your work</p>
                     </div>
-                    <button className="w-11 h-6 rounded-full bg-primary relative transition-colors hover:bg-primary/90 cursor-pointer">
-                      <div className="absolute right-1 top-1 h-4 w-4 rounded-full bg-white transition-transform" />
-                    </button>
+                    <Switch defaultChecked />
                   </div>
                 </div>
               </div>
@@ -954,7 +943,7 @@ export function MainContent({
           </span>
         </div>
       </div>
-      <main className="flex-1 overflow-y-auto bg-card p-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <main className="flex-1 overflow-y-auto bg-card p-6 animate-in fade-in slide-in-from-bottom-2 duration-200">
         <p className="text-sm text-muted-foreground mb-4 max-w-xl">
           Each assistant has a different style and focus. Use the filters below to narrow your choice—more creative,
           more minimal, or more practical.
@@ -962,7 +951,7 @@ export function MainContent({
 
         <div className="mb-6 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+            <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
               Style
             </span>
             {ASSISTANT_STYLE_OPTIONS.map((opt) => (
@@ -982,7 +971,7 @@ export function MainContent({
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+            <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
               Traits
             </span>
             {ALL_TRAITS.map((trait) => (
@@ -1161,6 +1150,7 @@ export function MainContent({
             </div>
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => setIsSaved(!isSaved)}
                 className="flex items-center justify-center h-7 w-7 rounded hover:bg-accent/10 text-muted-foreground hover:text-primary transition-all duration-200 cursor-pointer"
                 title={isSaved ? "Unsave" : "Save"}
@@ -1168,6 +1158,7 @@ export function MainContent({
                 <Star className={cn("h-3.5 w-3.5", isSaved && "fill-current text-primary")} />
               </button>
               <button
+                type="button"
                 className="flex items-center justify-center h-7 w-7 rounded hover:bg-accent/10 text-muted-foreground hover:text-primary transition-all duration-200 cursor-pointer"
                 title="Share"
               >
@@ -1176,7 +1167,7 @@ export function MainContent({
             </div>
           </div>
 
-          <main className="flex-1 overflow-y-auto bg-card p-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <main className="flex-1 overflow-y-auto bg-card p-6 animate-in fade-in slide-in-from-bottom-2 duration-200">
             {renderContent()}
           </main>
         </>

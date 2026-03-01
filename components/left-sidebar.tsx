@@ -82,6 +82,7 @@ export function LeftSidebar({ activeItem, recents = DEFAULT_RECENTS, onItemClick
                   </span>
                 </div>
                 <button
+                  type="button"
                   onClick={onHelpClick}
                   className="flex items-center justify-center h-7 w-7 rounded hover:bg-accent/10 text-muted-foreground hover:text-primary transition-all duration-200 cursor-pointer"
                   title="Help & Tutorial"
@@ -107,7 +108,7 @@ export function LeftSidebar({ activeItem, recents = DEFAULT_RECENTS, onItemClick
                             type="button"
                             onClick={() => onItemClick(item.id, item.label)}
                             className={cn(
-                              "group flex w-full items-center gap-2 rounded-none px-5 py-1 text-left text-[12px] font-medium cursor-pointer",
+                              "group flex w-full items-center gap-2 rounded-none px-5 py-1 text-left text-xs font-medium cursor-pointer",
                               "transition-all duration-200",
                               activeItem === item.id || activeItem.startsWith(`${item.id}-`)
                                 ? "bg-accent/15 text-primary"
@@ -137,7 +138,7 @@ export function LeftSidebar({ activeItem, recents = DEFAULT_RECENTS, onItemClick
                         type="button"
                         onClick={() => onItemClick(item.id, item.label)}
                         className={cn(
-                          "flex w-full items-center rounded-none px-5 py-1.5 text-left text-[12px] font-medium cursor-pointer",
+                          "flex w-full items-center rounded-none px-5 py-1.5 text-left text-xs font-medium cursor-pointer",
                           "transition-all duration-200",
                           activeItem === item.id
                             ? "bg-accent/15 text-primary"

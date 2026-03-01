@@ -142,7 +142,7 @@ export function DashboardLayout() {
         </div>
 
         {/* Middle Section */}
-        <div className="flex-1 bg-card overflow-hidden border border-border transition-all duration-300">
+        <div className="flex-1 bg-card overflow-hidden border border-border transition-all duration-200">
           <MainContent
             activeItem={activeItem}
             recents={recents}
