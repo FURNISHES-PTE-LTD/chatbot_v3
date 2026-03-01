@@ -12,6 +12,8 @@ import {
 } from "lucide-react"
 import { DEFAULT_RECENTS } from "@/lib/mock-data"
 import type { RecentItem } from "@/lib/types"
+import { IconButton } from "@/components/shared/icon-button"
+import { SectionLabel } from "@/components/shared/section-label"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
 
@@ -77,14 +79,7 @@ export function LeftSidebar({ activeItem, recents = DEFAULT_RECENTS, onItemClick
                     _
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={onHelpClick}
-                  className="flex items-center justify-center h-7 w-7 rounded hover:bg-accent/10 text-muted-foreground hover:text-primary transition-all duration-200 cursor-pointer"
-                  title="Help & Tutorial"
-                >
-                  <CircleHelp className="h-4 w-4" />
-                </button>
+                <IconButton icon={CircleHelp} title="Help & Tutorial" onClick={onHelpClick} />
               </div>
             </div>
 
@@ -93,9 +88,7 @@ export function LeftSidebar({ activeItem, recents = DEFAULT_RECENTS, onItemClick
                 {navigationCategories.map((category) => (
                   <div key={category.id}>
                     <div className="px-5 pb-0.5">
-                      <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                        {category.label}
-                      </p>
+                      <SectionLabel>{category.label}</SectionLabel>
                     </div>
                     <div className="space-y-0">
                       {category.items.map((item) => (
@@ -123,9 +116,7 @@ export function LeftSidebar({ activeItem, recents = DEFAULT_RECENTS, onItemClick
                 {/* Recents */}
                 <div>
                   <div className="px-5 pb-0.5 pt-2">
-                    <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                      RECENTS
-                    </p>
+                    <SectionLabel>RECENTS</SectionLabel>
                   </div>
                   <div className="space-y-0">
                     {recents.map((item) => (

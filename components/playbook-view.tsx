@@ -2,20 +2,13 @@
 
 import { useState } from "react"
 import { RotateCcw, RotateCw, Sparkles, Plus, Check, X, ZoomIn, ZoomOut } from "lucide-react"
+import { SectionLabel } from "@/components/shared/section-label"
 import { INIT_WF_NODES, INIT_WF_EDGES, NODE_TRACES } from "@/lib/mock-data"
 import type { WfNode, WfEdge } from "@/lib/mock-data"
 import { NODE_COLORS, STATUS_COLORS } from "@/lib/theme-colors"
 import { cn } from "@/lib/utils"
 
 type NodeType = "start" | "process" | "warning" | "end" | "knowledge"
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-2.5">
-      {children}
-    </div>
-  )
-}
 
 function ConfBar({ value }: { value: number }) {
   const color = value >= 85 ? "bg-orange-500" : value >= 60 ? "bg-primary" : "bg-red-400"

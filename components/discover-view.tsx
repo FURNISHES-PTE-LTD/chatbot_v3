@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Sparkles, ChevronRight, Link2, Lightbulb, Compass, ListChecks, Hash, Check, MessageCircle } from "lucide-react"
+import { SectionLabel } from "@/components/shared/section-label"
 import { KEY_INSIGHTS, TOPICS, RECOMMENDATIONS, PREFERENCES, EXPLORE_NEXT } from "@/lib/mock-data"
 import { PREFERENCE_STATUS } from "@/lib/theme-colors"
 import { cn } from "@/lib/utils"
@@ -67,9 +68,9 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Compass className="w-3.5 h-3.5 text-primary" />
-            <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+            <SectionLabel>
               Key insights
-            </span>
+            </SectionLabel>
           </div>
           <ul className="flex flex-col gap-2">
             {KEY_INSIGHTS.map((insight, i) => (
@@ -84,9 +85,9 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Hash className="w-3.5 h-3.5 text-muted-foreground" />
-            <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+            <SectionLabel>
               Topics
-            </span>
+            </SectionLabel>
           </div>
           <div className="flex gap-2 flex-wrap">
             {TOPICS.map((topic, i) => (
@@ -103,9 +104,9 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
         <div>
           <div className="flex items-center gap-2 mb-3">
             <ListChecks className="w-3.5 h-3.5 text-primary" />
-            <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+            <SectionLabel>
               Recommendations
-            </span>
+            </SectionLabel>
           </div>
           <ul className="flex flex-col gap-2">
             {RECOMMENDATIONS.map(({ id, label }) => {
@@ -223,9 +224,9 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                      <SectionLabel>
                         Connected to
-                      </span>
+                      </SectionLabel>
                     </div>
                     <div className="flex gap-2 flex-wrap">
                       {pref.connections.map((c, i) => (
@@ -242,9 +243,9 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <Lightbulb className="w-3.5 h-3.5 text-primary" />
-                      <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                      <SectionLabel>
                         Eva suggests
-                      </span>
+                      </SectionLabel>
                     </div>
                     <div className="flex flex-col gap-2">
                       {pref.suggestions.map((s, i) => {

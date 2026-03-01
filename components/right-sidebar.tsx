@@ -1,5 +1,6 @@
 "use client"
 
+import { IconButton } from "@/components/shared/icon-button"
 import type { Assistant } from "@/lib/types"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
@@ -102,14 +103,7 @@ export function RightSidebar({
           <div className="text-sm font-semibold text-foreground truncate">{selectedAssistant.name}</div>
           <div className="text-[10px] text-muted-foreground truncate">{selectedAssistant.tagline}</div>
         </div>
-        <button
-          type="button"
-          onClick={onChangeAssistantClick}
-          className="flex items-center justify-center h-7 w-7 rounded hover:bg-accent/10 text-muted-foreground hover:text-primary transition-all duration-200 cursor-pointer shrink-0"
-          title="Change AI assistant"
-        >
-          <RefreshCw className="h-4 w-4" />
-        </button>
+        <IconButton icon={RefreshCw} title="Change AI assistant" onClick={onChangeAssistantClick} />
       </div>
 
       <div className="flex-1 overflow-y-auto p-3">

@@ -41,6 +41,7 @@ import { FilesView } from "./files-view"
 import { DiscoverView } from "./discover-view"
 import { PlaybookView } from "./playbook-view"
 import { useState, useEffect } from "react"
+import { SectionLabel } from "@/components/shared/section-label"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -885,9 +886,7 @@ export function MainContent({
 
         <div className="mb-6 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-              Style
-            </span>
+            <SectionLabel>Style</SectionLabel>
             {ASSISTANT_STYLE_OPTIONS.map((opt) => (
               <button
                 key={opt.value || "all"}
@@ -905,9 +904,7 @@ export function MainContent({
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-              Traits
-            </span>
+            <SectionLabel>Traits</SectionLabel>
             {ALL_TRAITS.map((trait) => (
               <button
                 key={trait}
