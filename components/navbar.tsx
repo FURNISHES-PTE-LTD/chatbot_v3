@@ -6,7 +6,7 @@ interface NavbarProps {
 
 export function Navbar({ onFurnishesClick }: NavbarProps) {
   return (
-    <nav className="flex items-center justify-between h-12 bg-card border-b border-border px-8 shrink-0">
+    <header role="banner" className="flex items-center justify-between h-12 bg-card border-b border-border px-8 shrink-0">
       {/* Brand */}
       <button
         type="button"
@@ -53,6 +53,6 @@ export function Navbar({ onFurnishesClick }: NavbarProps) {
       >
         [ start journey ]
       </button>
-    </nav>
+    </header>
   )
 }

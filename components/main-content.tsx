@@ -645,7 +645,7 @@ export function MainContent({
           </span>
         </div>
       </div>
-      <main className="flex-1 overflow-y-auto bg-card p-6 animate-in fade-in slide-in-from-bottom-2 duration-200">
+      <main role="main" className="flex-1 overflow-y-auto bg-card p-6 animate-in fade-in slide-in-from-bottom-2 duration-200">
         <p className="text-sm text-muted-foreground mb-4 max-w-xl">
           Each assistant has a different style and focus. Use the filters below to narrow your choice—more creative,
           more minimal, or more practical.
@@ -865,7 +865,7 @@ export function MainContent({
             </div>
           </div>
 
-          <main className="flex-1 overflow-y-auto bg-card p-6 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <main role="main" className="flex-1 overflow-y-auto bg-card p-6 animate-in fade-in slide-in-from-bottom-2 duration-200">
             {renderContent()}
           </main>
         </>

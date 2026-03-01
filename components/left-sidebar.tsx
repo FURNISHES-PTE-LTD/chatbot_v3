@@ -64,7 +64,7 @@ export function LeftSidebar({ onHelpClick }: LeftSidebarProps) {
 
   return (
     <>
-      <aside className="hidden shrink-0 flex-col border border-border bg-card md:flex w-64 h-full">
+      <aside className="hidden shrink-0 flex-col border border-border bg-card md:flex w-64 h-full" aria-label="Main navigation">
         <div className="flex flex-col h-full overflow-hidden">
           <div
             data-tutorial="welcome"
@@ -101,6 +101,7 @@ export function LeftSidebar({ onHelpClick }: LeftSidebarProps) {
                                 ? "bg-accent/15 text-primary"
                                 : "text-foreground/80 hover:bg-accent/15 hover:text-foreground",
                             )}
+                            aria-current={activeItem === item.id ? "page" : undefined}
                           >
                             <item.icon className="h-4 w-4 shrink-0" />
                             <span className="flex-1">{item.label}</span>
@@ -129,6 +130,7 @@ export function LeftSidebar({ onHelpClick }: LeftSidebarProps) {
                             ? "bg-accent/15 text-primary"
                             : "text-foreground/80 hover:bg-accent/15 hover:text-foreground",
                         )}
+                        aria-current={activeItem === item.id ? "page" : undefined}
                       >
                         <span className="flex-1 truncate">{item.label}</span>
                       </button>

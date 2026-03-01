@@ -221,8 +221,14 @@ export function PlaybookView() {
                     role="button"
                     tabIndex={0}
                     aria-label={node.title}
-                    className="cursor-pointer"
+                    className="cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
                     onClick={() => setSelectedNode(isSel ? null : node.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        setSelectedNode(isSel ? null : node.id)
+                      }
+                    }}
                   >
                     {isSel && (
                       <rect

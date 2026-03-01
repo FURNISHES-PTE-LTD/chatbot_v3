@@ -92,7 +92,7 @@ export function RightSidebar({
   const [furnitureNeeds, setFurnitureNeeds] = useState<string | null>(null)
 
   return (
-    <aside className="shrink-0 flex flex-col bg-card border border-border h-full w-64">
+    <aside className="shrink-0 flex flex-col bg-card border border-border h-full w-64" aria-label="Preferences panel">
       <div className="flex items-center gap-2.5 px-4 py-4 bg-card border-b border-border">
         <Avatar className="h-8 w-8 bg-primary">
           <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
