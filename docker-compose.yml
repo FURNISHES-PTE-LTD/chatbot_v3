@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: eva
+      POSTGRES_PASSWORD: eva_local
+      POSTGRES_DB: eva_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - eva_pg_data:/var/lib/postgresql/data
+
+volumes:
+  eva_pg_data:

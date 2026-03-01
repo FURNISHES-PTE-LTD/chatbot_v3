@@ -1,5 +1,8 @@
+import { withSentryConfig } from "@sentry/nextjs"
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  serverExternalPackages: ["pino"],
   images: {
     // Use next/image optimization. Add remotePatterns for external domains as needed.
     remotePatterns: [],
@@ -24,4 +27,11 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+const sentryOptions = {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+}
+
+export default withSentryConfig(nextConfig, sentryOptions)
