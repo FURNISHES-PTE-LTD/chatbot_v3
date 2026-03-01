@@ -6,7 +6,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { RefreshCw, Lightbulb, Home, DollarSign, Star, ListChecks } from "lucide-react"
 
 interface RightSidebarProps {
-  onClose?: () => void
   onChangeAssistantClick?: () => void
   selectedAssistant?: { id: string; name: string; tagline: string }
 }

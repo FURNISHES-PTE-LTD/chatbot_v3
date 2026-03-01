@@ -1,5 +1,6 @@
 "use client"
 
+import { DEMO_RECENT_ID } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import {
   Star,
@@ -62,7 +63,6 @@ interface MainContentProps {
   onClearWorkspaceProject?: () => void
   showAssistantPicker?: boolean
   onSelectAssistant?: (assistant: { id: string; name: string; tagline: string }) => void
-  onCloseAssistantPicker?: () => void
   selectedAssistant?: { id: string; name: string; tagline: string }
   /** When user clicks "Edit in chat" from Files view, switch to chat and pre-fill this message. */
   pendingChatMessage?: string | null
@@ -74,8 +74,6 @@ interface MainContentProps {
 }
 
 type ChatMessage = { role: "user" | "assistant"; content: string }
-
-const DEMO_RECENT_ID = "recent-demo"
 
 /** Extended message shape for demo only (sources, extraction, taskCard, feedback). */
 type DemoMessage = ChatMessage & {
@@ -212,8 +210,6 @@ export function MainContent({
   onSendToChatFromDiscover,
 }: MainContentProps) {
   const [isSaved, setIsSaved] = useState(false)
-  const [selectedRooms, setSelectedRooms] = useState<string[]>([])
-  const [roomCounts, setRoomCounts] = useState<Record<string, number>>({})
   const [chatMessagesByKey, setChatMessagesByKey] = useState<Record<string, ChatMessage[]>>({})
   const [chatInputValue, setChatInputValue] = useState("")
   const [selectedWorkspaceForView, setSelectedWorkspaceForView] = useState<{ id: string; name: string } | null>(null)
@@ -316,17 +312,6 @@ export function MainContent({
     }, 400)
   }
 
-  const roomOptions = [
-    { id: "living", label: "Living Room", icon: Sofa },
-    { id: "dining", label: "Dining Room", icon: Utensils },
-    { id: "bedroom", label: "Bedroom", icon: Bed },
-    { id: "office", label: "Office", icon: Lamp },
-    { id: "kitchen", label: "Kitchen", icon: Utensils },
-    { id: "bathroom", label: "Bathroom", icon: Bath },
-    { id: "nursery", label: "Nursery", icon: Home },
-    { id: "reading", label: "Reading Room", icon: Armchair },
-  ]
-
   const getActiveIcon = () => {
     const iconMap: Record<string, any> = {
       "new-chat": MessageSquarePlus,
@@ -367,24 +352,6 @@ export function MainContent({
       .split("-")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ")
-  }
-
-  const handleRoomToggle = (roomId: string) => {
-    if (selectedRooms.includes(roomId)) {
-      setSelectedRooms(selectedRooms.filter((id) => id !== roomId))
-      const newCounts = { ...roomCounts }
-      delete newCounts[roomId]
-      setRoomCounts(newCounts)
-    } else {
-      setSelectedRooms([...selectedRooms, roomId])
-      setRoomCounts({ ...roomCounts, [roomId]: 1 })
-    }
-  }
-
-  const handleRoomCountChange = (roomId: string, delta: number) => {
-    const currentCount = roomCounts[roomId] || 1
-    const newCount = Math.max(1, currentCount + delta)
-    setRoomCounts({ ...roomCounts, [roomId]: newCount })
   }
 
   const renderChatView = (title: string) => (

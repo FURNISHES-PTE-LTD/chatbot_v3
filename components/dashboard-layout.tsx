@@ -1,26 +1,30 @@
 "use client"
 
+import { DEMO_RECENT_ID } from "@/lib/constants"
 import { LeftSidebar } from "./left-sidebar"
 import { RightSidebar } from "./right-sidebar"
 import { MainContent } from "./main-content"
-import { Navbar, type NavItemId } from "./navbar"
+import { Navbar } from "./navbar"
 import { TutorialGuide } from "./tutorial-guide"
 import { useState } from "react"
 
 const DEFAULT_WORKSPACE = { id: "ws-1", name: "Home Renovation" }
 const DEFAULT_PROJECT = { id: "proj-1a", name: "Living Room" }
 
-export const DEMO_RECENT_ID = "recent-demo"
+const INITIAL_RECENTS: { id: string; label: string }[] = [
+  { id: DEMO_RECENT_ID, label: "Design brief demo" },
+  { id: "recent-living-room", label: "Living Room Redesign" },
+  { id: "recent-sofa-ideas", label: "Sofa ideas & layout" },
+  { id: "recent-color-palette", label: "Color palette exploration" },
+]
 
 export function DashboardLayout() {
   const [activeItem, setActiveItem] = useState("recent-living-room")
-  const [activeNavId, setActiveNavId] = useState<NavItemId>("about")
   const [tabs, setTabs] = useState([
     { id: "tab-1", title: "Project 1", section: "recent-living-room" },
     { id: "tab-2", title: "Project 2", section: "search" },
   ])
   const [activeTabId, setActiveTabId] = useState("tab-1")
-  const [isRightSidebarVisible, setIsRightSidebarVisible] = useState(true)
   const [isTutorialOpen, setIsTutorialOpen] = useState(false)
   const [currentWorkspace, setCurrentWorkspace] = useState<{ id: string; name: string } | null>(DEFAULT_WORKSPACE)
   const [currentProject, setCurrentProject] = useState<{ id: string; name: string } | null>(DEFAULT_PROJECT)
@@ -31,12 +35,7 @@ export function DashboardLayout() {
     name: "Eva",
     tagline: "[the Assistant]",
   })
-  const [recents, setRecents] = useState<{ id: string; label: string }[]>([
-    { id: DEMO_RECENT_ID, label: "Design brief demo" },
-    { id: "recent-living-room", label: "Living Room Redesign" },
-    { id: "recent-sofa-ideas", label: "Sofa ideas & layout" },
-    { id: "recent-color-palette", label: "Color palette exploration" },
-  ])
+  const [recents, setRecents] = useState<{ id: string; label: string }[]>(INITIAL_RECENTS)
   const [pendingChatMessage, setPendingChatMessage] = useState<string | null>(null)
 
   const handleSelectWorkspaceProject = (workspace: { id: string; name: string }, project: { id: string; name: string }) => {
@@ -105,14 +104,6 @@ export function DashboardLayout() {
     }
   }
 
-  const handleAiAssistantClick = () => {
-    // Right sidebar is always visible; no collapse toggle
-  }
-
-  const handleCloseRightSidebar = () => {
-    setIsRightSidebarVisible(false)
-  }
-
   const handleFurnishesClick = () => {
     setActiveItem("landing")
   }
@@ -137,12 +128,7 @@ export function DashboardLayout() {
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-muted">
-      <Navbar
-        activeNavId={activeNavId}
-        onNavClick={setActiveNavId}
-        onFurnishesClick={handleFurnishesClick}
-        onStartJourneyClick={() => setActiveItem("landing")}
-      />
+      <Navbar onFurnishesClick={handleFurnishesClick} />
 
       <div className="flex flex-1 overflow-hidden p-2 gap-2 px-4">
         {/* Left Sidebar */}
@@ -151,7 +137,6 @@ export function DashboardLayout() {
             activeItem={activeItem}
             recents={recents}
             onItemClick={handleItemClick}
-            onAiAssistantClick={handleAiAssistantClick}
             onHelpClick={handleHelpClick}
           />
         </div>
@@ -192,7 +177,6 @@ export function DashboardLayout() {
         {/* Right Sidebar */}
         <div className="overflow-hidden h-full">
           <RightSidebar
-            onClose={handleCloseRightSidebar}
             onChangeAssistantClick={handleChangeAssistantClick}
             selectedAssistant={selectedAssistant}
           />

@@ -5,7 +5,6 @@ import {
   Search,
   FolderOpen,
   MessageSquarePlus,
-  ChevronDown,
   CircleHelp,
   Sparkles,
   GitBranch,
@@ -53,15 +52,12 @@ interface LeftSidebarProps {
   activeItem: string
   recents?: { id: string; label: string }[]
   onItemClick: (id: string, label: string) => void
-  onAiAssistantClick?: () => void
   onHelpClick?: () => void
 }
 
 const WELCOME_TEXT = "Welcome back !"
 
-export function LeftSidebar({ activeItem, recents = DEFAULT_RECENTS, onItemClick, onAiAssistantClick, onHelpClick }: LeftSidebarProps) {
-  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null)
+export function LeftSidebar({ activeItem, recents = DEFAULT_RECENTS, onItemClick, onHelpClick }: LeftSidebarProps) {
   const [typedLength, setTypedLength] = useState(0)
 
   useEffect(() => {
@@ -69,11 +65,6 @@ export function LeftSidebar({ activeItem, recents = DEFAULT_RECENTS, onItemClick
     const t = setTimeout(() => setTypedLength((n) => n + 1), 90)
     return () => clearTimeout(t)
   }, [typedLength])
-
-  const toggleExpand = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setExpandedItems((prev) => ({ ...prev, [id]: !prev[id] }))
-  }
 
   return (
     <>
@@ -113,16 +104,8 @@ export function LeftSidebar({ activeItem, recents = DEFAULT_RECENTS, onItemClick
                       {category.items.map((item) => (
                         <div key={item.id}>
                           <button
-                            onClick={() => {
-                              if (item.expandable) {
-                                toggleExpand(item.id, { stopPropagation: () => {} } as React.MouseEvent)
-                                onItemClick(item.id, item.label)
-                              } else {
-                                onItemClick(item.id, item.label)
-                              }
-                            }}
-                            onMouseEnter={() => setHoveredItem(item.id)}
-                            onMouseLeave={() => setHoveredItem(null)}
+                            type="button"
+                            onClick={() => onItemClick(item.id, item.label)}
                             className={cn(
                               "group flex w-full items-center gap-2 rounded-none px-5 py-1 text-left text-[12px] font-medium cursor-pointer",
                               "transition-all duration-200",
@@ -133,35 +116,7 @@ export function LeftSidebar({ activeItem, recents = DEFAULT_RECENTS, onItemClick
                           >
                             <item.icon className="h-4 w-4 shrink-0" />
                             <span className="flex-1">{item.label}</span>
-                            {item.expandable && (
-                              <ChevronDown
-                                className={cn(
-                                  "h-3.5 w-3.5 shrink-0 transition-transform duration-200",
-                                  expandedItems[item.id] ? "rotate-0" : "-rotate-90",
-                                )}
-                              />
-                            )}
                           </button>
-                          {item.expandable && item.subItems && expandedItems[item.id] && (
-                            <div className="ml-10 mt-0.5 space-y-0 animate-in fade-in slide-in-from-top-1 duration-200">
-                              {item.subItems.map((subItem) => (
-                                <button
-                                  key={subItem.id}
-                                  onClick={() => onItemClick(subItem.id, subItem.label)}
-                                  onMouseEnter={() => setHoveredItem(`${item.id}-${subItem.id}`)}
-                                  onMouseLeave={() => setHoveredItem(null)}
-                                  className={cn(
-                                    "flex w-full items-center gap-2 rounded px-3 py-0.5 text-left text-[11px] transition-all duration-200 cursor-pointer",
-                                    activeItem === `${item.id}-${subItem.id}`
-                                      ? "bg-accent/15 text-primary"
-                                      : "text-muted-foreground hover:bg-accent/10 hover:text-foreground",
-                                  )}
-                                >
-                                  <span>{subItem.label}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
                         </div>
                       ))}
                     </div>
@@ -179,9 +134,8 @@ export function LeftSidebar({ activeItem, recents = DEFAULT_RECENTS, onItemClick
                     {recents.map((item) => (
                       <button
                         key={item.id}
+                        type="button"
                         onClick={() => onItemClick(item.id, item.label)}
-                        onMouseEnter={() => setHoveredItem(item.id)}
-                        onMouseLeave={() => setHoveredItem(null)}
                         className={cn(
                           "flex w-full items-center rounded-none px-5 py-1.5 text-left text-[12px] font-medium cursor-pointer",
                           "transition-all duration-200",
