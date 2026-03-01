@@ -1,0 +1,78 @@
+/**
+ * Preference trends: trajectory (stable/exploring/narrowing/pivoting) and stability.
+ * Ported from V2 get_trends(). Gap 9.
+ */
+import { generateText } from "ai"
+import { openai } from "@ai-sdk/openai"
+import { prisma } from "@/lib/db"
+import { getDomainConfig } from "@/lib/domain-config"
+import { getOpenAIKey } from "@/lib/openai"
+
+function trajectoryFromChanges(
+  changes: Array<{ field: string }>
+): "stable" | "exploring" | "narrowing" | "pivoting" {
+  if (changes.length === 0) return "stable"
+  const n = changes.length
+  const fieldsChanged = new Set(changes.map((c) => c.field)).size
+  if (n <= 2 && fieldsChanged <= 1) return "stable"
+  if (fieldsChanged >= 3 && n >= 3) return "exploring"
+  if (n >= 4 && fieldsChanged <= 2) return "narrowing"
+  return "exploring"
+}
+
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params
+  const analytics = getDomainConfig().analytics as { trends_enabled?: boolean } | undefined
+  if (analytics?.trends_enabled === false) {
+    return Response.json({
+      summary: "",
+      fields: [],
+      trajectory: "stable",
+      stability: "high",
+    })
+  }
+
+  const changes = await prisma.preferenceChange.findMany({
+    where: { conversationId: id },
+    orderBy: { createdAt: "asc" },
+  })
+
+  const trajectory = trajectoryFromChanges(changes)
+  const stability =
+    trajectory === "stable"
+      ? "high"
+      : trajectory === "narrowing"
+        ? "medium"
+        : "low"
+
+  const fields = changes.map((c) => ({
+    field: c.field,
+    changeType: c.changeType,
+    confidence: c.confidence,
+  }))
+
+  let summary = `Trajectory: ${trajectory}; stability: ${stability}.`
+  if (getOpenAIKey() && changes.length > 0) {
+    try {
+      const recent = JSON.stringify(fields.slice(-20))
+      const { text } = await generateText({
+        model: openai("gpt-4o-mini"),
+        prompt: `Preference change history (field, type): ${recent}\nCurrent trajectory: ${trajectory}. In one short sentence, summarize the user's preference evolution. No JSON.`,
+        maxRetries: 2,
+      })
+      if (text?.trim()) summary = text.trim()
+    } catch {
+      // keep default summary
+    }
+  }
+
+  return Response.json({
+    summary,
+    fields,
+    trajectory,
+    stability,
+  })
+}

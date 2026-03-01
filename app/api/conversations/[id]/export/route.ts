@@ -1,8 +1,19 @@
 /**
  * Export conversation as JSON or Markdown (preferences, change history, messages).
- * Ported from V2 export.py.
+ * Markdown includes optional LLM-generated summary, key_decisions, open_questions (Gap 8).
  */
+import { generateObject } from "ai"
+import { openai } from "@ai-sdk/openai"
+import { zodSchema } from "ai"
+import { z } from "zod"
 import { prisma } from "@/lib/db"
+import { getOpenAIKey } from "@/lib/openai"
+
+const ExportSummarySchema = z.object({
+  summary: z.string().describe("2-3 sentence project summary"),
+  key_decisions: z.array(z.string()).describe("Main choices made"),
+  open_questions: z.array(z.string()).describe("1-3 open questions"),
+})
 
 export async function GET(
   req: Request,
@@ -43,7 +54,45 @@ export async function GET(
     })
   }
 
+  let summary = ""
+  let key_decisions: string[] = []
+  let open_questions: string[] = []
+  if (getOpenAIKey() && (Object.keys(preferences).length > 0 || messagesData.length > 0)) {
+    try {
+      const prefsStr = JSON.stringify(preferences, null, 0)
+      const recent = messagesData
+        .slice(-20)
+        .map((m) => `${m.role}: ${(m.content ?? "").slice(0, 150)}`)
+        .join("\n")
+      const { object } = await generateObject({
+        model: openai("gpt-4o-mini"),
+        schema: zodSchema(ExportSummarySchema),
+        prompt: `Preferences: ${prefsStr}\nRecent messages:\n${recent}\n\nRespond with JSON: "summary" (2-3 sentences), "key_decisions" (array of short strings), "open_questions" (1-3 questions). Output only JSON.`,
+        maxRetries: 2,
+      })
+      summary = object.summary ?? ""
+      key_decisions = object.key_decisions ?? []
+      open_questions = object.open_questions ?? []
+    } catch {
+      // leave summary/decisions/questions empty
+    }
+  }
+
   const parts: string[] = ["# Project Export\n\n"]
+  if (summary) {
+    parts.push("## Summary\n\n")
+    parts.push(summary + "\n\n")
+  }
+  if (key_decisions.length > 0) {
+    parts.push("## Key decisions\n\n")
+    for (const d of key_decisions) parts.push(`- ${d}\n`)
+    parts.push("\n")
+  }
+  if (open_questions.length > 0) {
+    parts.push("## Open questions\n\n")
+    for (const q of open_questions) parts.push(`- ${q}\n`)
+    parts.push("\n")
+  }
   parts.push("## Preferences\n\n```json\n")
   parts.push(JSON.stringify(preferences, null, 2))
   parts.push("\n```\n\n")

@@ -14,6 +14,14 @@ import {
   adjustConfidenceForUncertainty,
   UncertaintyLevel,
 } from "@/lib/extraction/uncertainty"
+import {
+  classifyMessageIntent,
+  shouldSkipExtraction,
+} from "@/lib/extraction/classifier"
+import {
+  detectStateChangeIntent,
+  createStateChangeUpdate,
+} from "@/lib/extraction/state-change"
 import { getOpenAIKey, OPENAI_KEY_MISSING_MESSAGE } from "@/lib/openai"
 
 function getExtractionFieldEnum() {
@@ -60,6 +68,18 @@ export async function POST(req: Request) {
     )
   }
   const { messageId, content, conversationId } = parsed.data
+
+  // 0. Classify intent: skip LLM for purely exploratory messages (saves cost)
+  const { intent } = classifyMessageIntent(content)
+  if (shouldSkipExtraction(intent)) {
+    if (messageId) {
+      await prisma.message.update({
+        where: { id: messageId },
+        data: { extractions: [] },
+      })
+    }
+    return Response.json({ entities: [] })
+  }
 
   // 1. Pre-process: vocabulary expansion, negations, semantic inference
   const expandedContent = expandMessageVocabulary(content)
@@ -125,12 +145,50 @@ Message: "${expandedContent}"`
     }
   }
 
-  // 5. Load current preferences and run contradiction check
+  // 5. Load current preferences and apply state change (retraction/update) if detected
   const currentPrefsList = await prisma.preference.findMany({
     where: { conversationId },
   })
   const currentPrefs: Record<string, string> = {}
   for (const p of currentPrefsList) currentPrefs[p.field] = p.value
+
+  const recentMessages = await prisma.message.findMany({
+    where: { conversationId },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+  })
+  const recentContents = recentMessages
+    .filter((m) => m.role === "user")
+    .map((m) => m.content ?? "")
+
+  const stateChange = detectStateChangeIntent(content)
+  if (stateChange.hasChange && stateChange.changeType) {
+    const { updates } = createStateChangeUpdate(
+      stateChange,
+      currentPrefs,
+      recentContents
+    )
+    for (const { field, value } of updates) {
+      const existing = currentPrefs[field]
+      await prisma.preferenceChange.create({
+        data: {
+          conversationId,
+          field,
+          oldValue: existing ?? null,
+          newValue: value,
+          confidence: 1,
+          changeType: existing ? "update" : "set",
+          sourceMessageId: messageId ?? null,
+        },
+      })
+      await prisma.preference.upsert({
+        where: { conversationId_field: { conversationId, field } },
+        create: { conversationId, field, value, confidence: 1, status: "confirmed" },
+        update: { value, confidence: 1, status: "confirmed" },
+      })
+      currentPrefs[field] = value
+    }
+  }
 
   for (const entity of entities) {
     const result = checkContradiction(
