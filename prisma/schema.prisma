@@ -115,3 +115,14 @@ model PreferenceChange {
 
   @@index([conversationId])
 }
+
+model File {
+  id             String   @id @default(cuid())
+  conversationId String
+  filename       String
+  url            String
+  type           String?  // e.g. image/jpeg, image/png
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId])
+}

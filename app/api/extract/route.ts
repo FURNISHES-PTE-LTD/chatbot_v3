@@ -3,17 +3,25 @@ import { openai } from "@ai-sdk/openai"
 import { zodSchema } from "ai"
 import { z } from "zod"
 import { prisma } from "@/lib/db"
+import { getDomainConfig } from "@/lib/domain-config"
 import { expandVocabulary } from "@/lib/extraction/vocabulary"
 import { detectNegations, mapNegatedTermsToFields } from "@/lib/extraction/negation"
 import { extractIndirectPreferences } from "@/lib/extraction/semantic-inference"
 import { checkContradiction } from "@/lib/extraction/contradiction"
 import { normalizeValue } from "@/lib/extraction/normalize"
 
+const DEFAULT_FIELD_IDS = ["roomType", "style", "budget", "color", "furniture", "exclusion"] as const
+function getExtractionFieldEnum() {
+  const fieldIds = getDomainConfig().fields?.map((f) => f.id) ?? [...DEFAULT_FIELD_IDS]
+  const tuple = fieldIds.length > 0 ? (fieldIds as [string, ...string[]]) : (DEFAULT_FIELD_IDS as unknown as [string, ...string[]])
+  return z.enum(tuple)
+}
+
 const ExtractionSchema = z.object({
   entities: z.array(
     z.object({
       text: z.string(),
-      field: z.enum(["roomType", "style", "budget", "color", "furniture", "exclusion"]),
+      field: getExtractionFieldEnum(),
       confidence: z.number().min(0).max(1),
     }),
   ),

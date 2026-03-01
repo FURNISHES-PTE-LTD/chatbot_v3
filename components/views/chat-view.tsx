@@ -110,6 +110,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
     e.target.value = ""
     const formData = new FormData()
     formData.append("file", file)
+    if (currentConvoId) formData.append("conversationId", currentConvoId)
     try {
       const res = await fetch("/api/upload", { method: "POST", body: formData })
       if (!res.ok) {
@@ -233,6 +234,23 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                       <Check className="w-3 h-3 text-orange-500" /> <span className="text-orange-600 font-normal">Captured:</span> {demoMsg.extraction.value}
                     </div>
                   )}
+                  {!isUser && !isDemoChat && (() => {
+                    let prevUser: (typeof messagesToShow)[number] | undefined
+                    for (let j = i - 1; j >= 0; j--) {
+                      if (messagesToShow[j].role === "user") {
+                        prevUser = messagesToShow[j]
+                        break
+                      }
+                    }
+                    const prevExtractions = prevUser && "extractions" in prevUser ? (prevUser as { extractions?: { field: string; text: string }[] }).extractions : undefined
+                    if (!prevExtractions?.length) return null
+                    const capturedLabel = prevExtractions.map((e) => `${e.field}: ${e.text}`).join(", ")
+                    return (
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 border border-orange-100 text-xs text-orange-700 font-medium w-fit">
+                        <Check className="w-3 h-3 text-orange-500" /> <span className="text-orange-600 font-normal">Captured:</span> {capturedLabel}
+                      </div>
+                    )
+                  })()}
                   {hasFeedback && (
                     <div className="flex items-center gap-1 mt-0.5">
                       <button

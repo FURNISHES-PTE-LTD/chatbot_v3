@@ -1,6 +1,7 @@
 import { writeFile, mkdir } from "fs/promises"
 import path from "path"
 import { randomUUID } from "crypto"
+import { prisma } from "@/lib/db"
 
 const UPLOAD_DIR = path.join(process.cwd(), "uploads")
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
@@ -10,6 +11,7 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData()
     const file = formData.get("file") as File | null
+    const conversationId = formData.get("conversationId") as string | null
     if (!file || typeof file === "string") {
       return Response.json({ error: "No file provided" }, { status: 400 })
     }
@@ -28,6 +30,16 @@ export async function POST(req: Request) {
     await writeFile(filepath, buffer)
 
     const url = `/api/uploads/${id}`
+    if (conversationId && conversationId.trim()) {
+      await prisma.file.create({
+        data: {
+          conversationId: conversationId.trim(),
+          filename: file.name,
+          url,
+          type: file.type,
+        },
+      })
+    }
     return Response.json({ url, filename: file.name })
   } catch (e) {
     console.error("Upload error:", e)

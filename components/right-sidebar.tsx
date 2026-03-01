@@ -73,11 +73,11 @@ function PreferenceCard({
   )
 }
 
-const ROOM_OPTIONS = ["living room", "bedroom", "kitchen", "dining room", "bathroom", "home office"]
-const BUDGET_OPTIONS = ["$1000", "$5000", "$10000+"]
-const STYLE_OPTIONS = ["modern", "traditional", "minimalist", "scandinavian", "industrial", "bohemian"]
-const COLOR_OPTIONS = ["blue", "green", "neutral", "warm tones", "cool tones"]
-const FURNITURE_OPTIONS = ["sofa", "bed", "dining table", "coffee table", "lighting"]
+const DEFAULT_ROOM_OPTIONS = ["living room", "bedroom", "kitchen", "dining room", "bathroom", "home office"]
+const DEFAULT_BUDGET_OPTIONS = ["$1000", "$5000", "$10000+"]
+const DEFAULT_STYLE_OPTIONS = ["modern", "traditional", "minimalist", "scandinavian", "industrial", "bohemian"]
+const DEFAULT_COLOR_OPTIONS = ["blue", "green", "neutral", "warm tones", "cool tones"]
+const DEFAULT_FURNITURE_OPTIONS = ["sofa", "bed", "dining table", "coffee table", "lighting"]
 
 const FIELD_TO_KEY: Record<string, string> = {
   roomType: "roomType",
@@ -98,17 +98,46 @@ interface RightSidebarProps {
   onSendToChat?: (text: string) => void
 }
 
+interface DomainFieldConfig {
+  id: string
+  label: string
+  type?: string
+  vocabulary?: string[]
+  suggestions?: string[]
+}
+
+function optionsFromField(field: DomainFieldConfig | undefined, fallback: string[]): string[] {
+  if (!field) return fallback
+  const opts = field.suggestions ?? field.vocabulary ?? []
+  return Array.isArray(opts) && opts.length > 0 ? opts : fallback
+}
+
 export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
   const { selectedAssistant, setShowAssistantPicker } = useWorkspaceContext()
   const { conversationId } = useCurrentConversation()
   const { preferences, setPreferences } = useCurrentPreferences()
   const [brainstormLoading, setBrainstormLoading] = useState(false)
+  const [domainFields, setDomainFields] = useState<DomainFieldConfig[]>([])
 
   const [roomType, setRoomType] = useState<string | null>(null)
   const [budget, setBudget] = useState<string | null>(null)
   const [designStyle, setDesignStyle] = useState<string | null>(null)
   const [colorPref, setColorPref] = useState<string | null>(null)
   const [furnitureNeeds, setFurnitureNeeds] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((config: { fields?: DomainFieldConfig[] }) => setDomainFields(config.fields ?? []))
+      .catch(() => setDomainFields([]))
+  }, [])
+
+  const fieldsById = Object.fromEntries((domainFields ?? []).map((f) => [f.id, f]))
+  const roomOptions = optionsFromField(fieldsById.roomType, DEFAULT_ROOM_OPTIONS)
+  const budgetOptions = optionsFromField(fieldsById.budget, DEFAULT_BUDGET_OPTIONS)
+  const styleOptions = optionsFromField(fieldsById.style, DEFAULT_STYLE_OPTIONS)
+  const colorOptions = optionsFromField(fieldsById.color, DEFAULT_COLOR_OPTIONS)
+  const furnitureOptions = optionsFromField(fieldsById.furniture, DEFAULT_FURNITURE_OPTIONS)
 
   useEffect(() => {
     if (!conversationId) {
@@ -255,7 +284,7 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
               icon={Home}
               isComplete={!!roomType}
               current={roomType}
-              options={ROOM_OPTIONS}
+              options={roomOptions}
               value={roomType}
               onChange={(v) => handlePreferenceChange("roomType", v)}
               borderOnTabs
@@ -267,7 +296,7 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
               icon={DollarSign}
               isComplete={!!budget}
               current={budget}
-              options={BUDGET_OPTIONS}
+              options={budgetOptions}
               value={budget}
               onChange={(v) => handlePreferenceChange("budget", v)}
               borderOnTabs
@@ -278,7 +307,7 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
               icon={Lightbulb}
               isComplete={!!designStyle}
               current={designStyle}
-              options={STYLE_OPTIONS}
+              options={styleOptions}
               value={designStyle}
               onChange={(v) => handlePreferenceChange("designStyle", v)}
               borderOnTabs
@@ -289,7 +318,7 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
               icon={Star}
               isComplete={!!colorPref}
               current={colorPref}
-              options={COLOR_OPTIONS}
+              options={colorOptions}
               value={colorPref}
               onChange={(v) => handlePreferenceChange("colorPref", v)}
               borderOnTabs
@@ -300,7 +329,7 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
               icon={ListChecks}
               isComplete={!!furnitureNeeds}
               current={furnitureNeeds}
-              options={FURNITURE_OPTIONS}
+              options={furnitureOptions}
               value={furnitureNeeds}
               onChange={(v) => handlePreferenceChange("furnitureNeeds", v)}
               borderOnTabs
