@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useState, useEffect, lazy, Suspense } from "react"
 import {
   Star,
   Share2,
@@ -13,7 +13,6 @@ import {
   Home,
   Download,
   List,
-  Package,
 } from "lucide-react"
 import { useAppContext } from "@/lib/contexts/app-context"
 import { useWorkspaceContext } from "@/lib/contexts/workspace-context"
@@ -21,15 +20,28 @@ import { useCurrentConversation } from "@/lib/contexts/current-conversation-cont
 import type { Workspace } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { API_ROUTES } from "@/lib/api"
-import { FilesView } from "./files-view"
-import { DiscoverView } from "./discover-view"
-import { PlaybookView } from "./playbook-view"
-import { SettingsView } from "./views/settings-view"
-import { HistoryView } from "./views/history-view"
+import { toast } from "sonner"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ChatView } from "./views/chat-view"
-import { WorkspaceView } from "./views/workspace-view"
-import { AssistantPickerView } from "./views/assistant-picker"
-import { useState, useEffect } from "react"
+
+const FilesView = lazy(() => import("./files-view").then((m) => ({ default: m.FilesView })))
+const DiscoverView = lazy(() => import("./discover-view").then((m) => ({ default: m.DiscoverView })))
+const PlaybookView = lazy(() => import("./playbook-view").then((m) => ({ default: m.PlaybookView })))
+const SettingsView = lazy(() => import("./views/settings-view").then((m) => ({ default: m.SettingsView })))
+const HistoryView = lazy(() => import("./views/history-view").then((m) => ({ default: m.HistoryView })))
+const WorkspaceView = lazy(() => import("./views/workspace-view").then((m) => ({ default: m.WorkspaceView })))
+const AssistantPickerView = lazy(() => import("./views/assistant-picker").then((m) => ({ default: m.AssistantPickerView })))
+
+function ViewSkeleton() {
+  return (
+    <div className="space-y-3 p-6">
+      <Skeleton className="h-6 w-48" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-3/4" />
+    </div>
+  )
+}
 
 interface MainContentProps {
   workspaceListKey?: number
@@ -51,7 +63,6 @@ export function MainContent({
     selectWorkspaceProject,
     clearWorkspaceProject,
   } = useWorkspaceContext()
-  const [isSaved, setIsSaved] = useState(false)
   const [selectedWorkspaceForView, setSelectedWorkspaceForView] = useState<Workspace | null>(null)
 
   useEffect(() => {
@@ -78,7 +89,7 @@ export function MainContent({
         ? LayoutDashboard
         : activeItem.startsWith("recent-") || activeItem.startsWith("convo-")
           ? Clock
-          : iconMap[activeItem] || Package
+          : iconMap[activeItem] || MessageSquarePlus
     return <IconComponent className="h-3.5 w-3.5 text-muted-foreground" />
   }
 
@@ -115,24 +126,40 @@ export function MainContent({
 
     if (activeItem === "workspace") {
       return (
-        <WorkspaceView
-          selectedWorkspaceForView={selectedWorkspaceForView}
-          onSelectWorkspaceForView={setSelectedWorkspaceForView}
-          currentWorkspace={currentWorkspace}
-          currentProject={currentProject}
-          onSelectWorkspaceProject={selectWorkspaceProject}
-          onClearWorkspaceProject={clearWorkspaceProject}
-        />
+        <Suspense fallback={<ViewSkeleton />}>
+          <WorkspaceView
+            selectedWorkspaceForView={selectedWorkspaceForView}
+            onSelectWorkspaceForView={setSelectedWorkspaceForView}
+            currentWorkspace={currentWorkspace}
+            currentProject={currentProject}
+            onSelectWorkspaceProject={selectWorkspaceProject}
+            onClearWorkspaceProject={clearWorkspaceProject}
+          />
+        </Suspense>
       )
     }
 
-    if (activeItem === "files") return <FilesView onEditInChat={onEditInChatFromFiles} />
-    if (activeItem === "discover" || activeItem === "recommendations") return <DiscoverView onSendToChat={onSendToChatFromDiscover} />
+    if (activeItem === "files") {
+      return (
+        <Suspense fallback={<ViewSkeleton />}>
+          <FilesView onEditInChat={onEditInChatFromFiles} />
+        </Suspense>
+      )
+    }
+    if (activeItem === "discover" || activeItem === "recommendations") {
+      return (
+        <Suspense fallback={<ViewSkeleton />}>
+          <DiscoverView onSendToChat={onSendToChatFromDiscover} />
+        </Suspense>
+      )
+    }
     if (activeItem === "playbook") {
       return (
-        <div className="flex flex-col h-full min-h-0 -m-6">
-          <PlaybookView />
-        </div>
+        <Suspense fallback={<ViewSkeleton />}>
+          <div className="flex flex-col h-full min-h-0 -m-6">
+            <PlaybookView />
+          </div>
+        </Suspense>
       )
     }
     if (activeItem === "export") {
@@ -154,7 +181,7 @@ export function MainContent({
                       a.click()
                       URL.revokeObjectURL(a.href)
                     })
-                    .catch(() => {})
+                    .catch(() => toast.error("Export failed"))
                 }}
                 className="px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium hover:bg-muted"
               >
@@ -172,7 +199,7 @@ export function MainContent({
                       a.click()
                       URL.revokeObjectURL(a.href)
                     })
-                    .catch(() => {})
+                    .catch(() => toast.error("Export failed"))
                 }}
                 className="px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium hover:bg-muted"
               >
@@ -186,7 +213,11 @@ export function MainContent({
       )
     }
     if (activeItem === "history") {
-      return <HistoryView onItemClick={onItemClick} />
+      return (
+        <Suspense fallback={<ViewSkeleton />}>
+          <HistoryView onItemClick={onItemClick} />
+        </Suspense>
+      )
     }
 
     switch (activeItem) {
@@ -201,7 +232,11 @@ export function MainContent({
           </div>
         )
       case "settings":
-        return <SettingsView />
+        return (
+          <Suspense fallback={<ViewSkeleton />}>
+            <SettingsView />
+          </Suspense>
+        )
       default:
         return (
           <div>
@@ -215,7 +250,9 @@ export function MainContent({
   return (
     <div data-tutorial="main-content" className="h-full overflow-hidden flex flex-col">
         {showAssistantPicker ? (
-          <AssistantPickerView />
+          <Suspense fallback={<ViewSkeleton />}>
+            <AssistantPickerView />
+          </Suspense>
         ) : (
           <>
             <div className="flex h-10 items-center justify-between px-3 border-b border-border">
@@ -310,11 +347,11 @@ export function MainContent({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsSaved(!isSaved)}
-                  className="flex items-center justify-center h-7 w-7 rounded hover:bg-accent/10 text-muted-foreground hover:text-primary transition-all duration-200 cursor-pointer"
-                  title={isSaved ? "Unsave" : "Save"}
+                  disabled
+                  className="flex items-center justify-center h-7 w-7 rounded opacity-50 cursor-not-allowed text-muted-foreground"
+                  title="Save conversation (coming soon)"
                 >
-                  <Star className={cn("h-3.5 w-3.5", isSaved && "fill-current text-primary")} />
+                  <Star className="h-3.5 w-3.5" />
                 </button>
                 <button
                   type="button"

@@ -1,10 +1,13 @@
 import { prisma } from "@/lib/db"
+import { requireConversationAccess } from "@/lib/auth-helpers"
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
+  const { error, status } = await requireConversationAccess(id)
+  if (error) return Response.json({ error }, { status })
   const conversation = await prisma.conversation.findUnique({
     where: { id },
     include: { messages: { orderBy: { createdAt: "asc" } } },
@@ -22,6 +25,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
+  const { error, status } = await requireConversationAccess(id)
+  if (error) return Response.json({ error }, { status })
   const conversation = await prisma.conversation.findUnique({
     where: { id },
   })

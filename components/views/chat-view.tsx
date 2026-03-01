@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-import { MessageSquarePlus, Send, Paperclip, Lightbulb, Check, Bookmark, Edit3, Home, Briefcase, Moon, Sun, ThumbsUp, ThumbsDown } from "lucide-react"
-import { CHAT_SUGGESTION_CARDS } from "@/lib/mock-data"
+import { MessageSquarePlus, Send, Paperclip, Lightbulb, Check, Edit3, Home, Briefcase, Moon, Sun, ThumbsUp, ThumbsDown } from "lucide-react"
+import { CHAT_SUGGESTION_CARDS } from "@/lib/suggestion-cards"
 import { useAppContext } from "@/lib/contexts/app-context"
 import { useChatContext } from "@/lib/contexts/chat-context"
 import { useCurrentConversation } from "@/lib/contexts/current-conversation-context"
@@ -37,17 +37,20 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
     setInputValue,
     pendingMessage,
     clearPendingMessage,
+    isStreamingForKey,
     isStreaming,
     conversationIds,
   } = useChatContext()
-  const { setConversationId } = useCurrentConversation()
-
+  const bottomRef = useRef<HTMLDivElement>(null)
   const chatKey =
     currentWorkspace && currentProject
       ? `${currentWorkspace.id}-${currentProject.id}`
       : activeItem.startsWith("recent-") || activeItem.startsWith("convo-")
         ? activeItem
         : "default"
+  const isStreamingThisChat = isStreamingForKey(chatKey)
+  const { setConversationId } = useCurrentConversation()
+
   const chatMessages = messagesByKey[chatKey] || []
   const messagesToShow = chatMessages
   const currentConvoId = conversationIds[chatKey] ?? (chatKey.startsWith("convo-") ? chatKey.replace("convo-", "") : null)
@@ -86,12 +89,19 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
   }, [chatKey, conversationIds, setConversationId])
 
   useEffect(() => {
-    if (currentConvoId && chatMessages.length > 2) {
-      apiPost<{ suggestions?: string[] }>(API_ROUTES.suggestions, { conversationId: currentConvoId })
-        .then((data) => data.suggestions?.length && setSuggestions(data.suggestions))
-        .catch(() => {})
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messagesToShow.length, messagesToShow[messagesToShow.length - 1]?.content])
+
+  useEffect(() => {
+    if (!isStreaming && currentConvoId && chatMessages.length > 2) {
+      const timer = setTimeout(() => {
+        apiPost<{ suggestions?: string[] }>(API_ROUTES.suggestions, { conversationId: currentConvoId })
+          .then((data) => data.suggestions?.length && setSuggestions(data.suggestions))
+          .catch(() => {})
+      }, 1500)
+      return () => clearTimeout(timer)
     }
-  }, [currentConvoId, chatMessages.length])
+  }, [isStreaming, currentConvoId])
 
   const handleSendChatMessage = () => {
     if (!inputValue.trim()) return
@@ -342,9 +352,10 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
             )
           })
         )}
+        <div ref={bottomRef} />
       </div>
       <div className="shrink-0 flex flex-col gap-1.5 pt-1.5 border-t border-border -mx-6 px-6">
-        {isStreaming && (
+        {isStreamingThisChat && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
             <ChatAvatar role="assistant" initial="E" size="sm" />
             <span className="flex gap-1">
@@ -397,10 +408,10 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
           <button
             type="button"
             onClick={handleSendChatMessage}
-            disabled={!inputValue.trim() || isStreaming}
+            disabled={!inputValue.trim() || isStreamingThisChat}
             className="shrink-0 rounded-md p-2 bg-primary text-primary-foreground transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
-            <Send className="h-4 h-4" />
+            <Send className="h-4 w-4" />
           </button>
         </div>
       </div>

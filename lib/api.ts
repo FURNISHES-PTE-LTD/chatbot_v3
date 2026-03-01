@@ -27,8 +27,13 @@ async function handleResponse<T>(res: Response): Promise<T> {
     const err = await res
       .json()
       .catch(() => ({ error: res.statusText, status: res.status }))
-    const body = err as { error?: string; status?: number }
-    const message = body.error ?? res.statusText
+    const body = err as { error?: string | { code?: string; message?: string; details?: unknown }; status?: number }
+    const message =
+      typeof body.error === "object" && body.error?.message
+        ? body.error.message
+        : typeof body.error === "string"
+          ? body.error
+          : res.statusText
     const status = body.status ?? res.status
     throw new Error(status >= 500 ? `Server error (${status}): ${message}` : message)
   }

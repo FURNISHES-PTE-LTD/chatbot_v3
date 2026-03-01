@@ -5,6 +5,7 @@
 import { generateText } from "ai"
 import { openai } from "@ai-sdk/openai"
 import { prisma } from "@/lib/db"
+import { requireConversationAccess } from "@/lib/auth-helpers"
 import { getDomainConfig } from "@/lib/domain-config"
 import {
   getOpenAIKey,
@@ -30,6 +31,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
+  const { error, status } = await requireConversationAccess(id)
+  if (error) return Response.json({ error }, { status })
   const analytics = getDomainConfig().analytics as { trends_enabled?: boolean } | undefined
   if (analytics?.trends_enabled === false) {
     return Response.json({

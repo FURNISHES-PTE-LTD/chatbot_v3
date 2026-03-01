@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { prisma } from "@/lib/db"
+import { requireConversationAccess } from "@/lib/auth-helpers"
 
 const PreferencesPatchSchema = z.object({
   field: z.string(),
@@ -11,6 +12,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
+  const { error, status } = await requireConversationAccess(id)
+  if (error) return Response.json({ error }, { status })
   const prefs = await prisma.preference.findMany({
     where: { conversationId: id },
   })
@@ -22,6 +25,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
+  const { error, status } = await requireConversationAccess(id)
+  if (error) return Response.json({ error }, { status })
   const body = await req.json()
   const parsed = PreferencesPatchSchema.safeParse(body)
   if (!parsed.success) {
@@ -52,6 +57,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
+  const { error, status } = await requireConversationAccess(id)
+  if (error) return Response.json({ error }, { status })
   let body: { field?: string }
   try {
     body = await req.json()

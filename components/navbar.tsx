@@ -18,32 +18,20 @@ export function Navbar({ onFurnishesClick }: NavbarProps) {
 
       {/* Center nav links */}
       <div className="flex items-center gap-8">
-        <button
-          type="button"
-          className="text-xs tracking-widest uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
+        <span className="text-xs tracking-widest uppercase text-muted-foreground/50 cursor-default select-none" title="Coming soon">
           COLLECTIONS
-        </button>
-        <button
-          type="button"
-          className="text-xs tracking-widest uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer relative"
-        >
+        </span>
+        <span className="text-xs tracking-widest uppercase text-muted-foreground/50 cursor-default select-none relative" title="Coming soon">
           INSPIRATION
           <sup className="ml-0.5 text-[9px] font-normal text-muted-foreground">03</sup>
-        </button>
-        <button
-          type="button"
-          className="text-xs tracking-widest uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
+        </span>
+        <span className="text-xs tracking-widest uppercase text-muted-foreground/50 cursor-default select-none" title="Coming soon">
           PLAYGROUND
           <sup className="ml-0.5 text-[9px] font-normal text-muted-foreground">01</sup>
-        </button>
-        <button
-          type="button"
-          className="text-xs tracking-widest uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
+        </span>
+        <span className="text-xs tracking-widest uppercase text-muted-foreground/50 cursor-default select-none" title="Coming soon">
           ABOUT
-        </button>
+        </span>
       </div>
 
       {/* CTA */}

@@ -32,7 +32,7 @@ function getConfigPath(): string {
 }
 
 export function getDomainConfig(): DomainConfig {
-  if (cached) return cached
+  if (cached && process.env.NODE_ENV === "production") return cached
   try {
     const path = getConfigPath()
     const raw = readFileSync(path, "utf-8")

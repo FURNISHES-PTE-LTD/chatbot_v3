@@ -3,6 +3,7 @@ import { openai } from "@ai-sdk/openai"
 import { zodSchema } from "ai"
 import { z } from "zod"
 import { prisma } from "@/lib/db"
+import { requireConversationAccess } from "@/lib/auth-helpers"
 import { messagesToTranscript } from "@/lib/api-helpers"
 import {
   getOpenAIKey,
@@ -23,6 +24,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
+  const { error, status } = await requireConversationAccess(id)
+  if (error) return Response.json({ error }, { status })
   const messages = await prisma.message.findMany({
     where: { conversationId: id },
     orderBy: { createdAt: "asc" },

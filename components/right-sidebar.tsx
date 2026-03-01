@@ -4,7 +4,7 @@ import { IconButton } from "@/components/shared/icon-button"
 import { useWorkspaceContext } from "@/lib/contexts/workspace-context"
 import { useCurrentConversation } from "@/lib/contexts/current-conversation-context"
 import { useCurrentPreferences } from "@/lib/contexts/current-preferences-context"
-import { useState, useEffect } from "react"
+import { useState, useEffect, memo } from "react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { RefreshCw, Lightbulb, Home, DollarSign, Star, ListChecks, Download, X, Loader2 } from "lucide-react"
@@ -41,7 +41,7 @@ function PreferenceCard({
   return (
     <div
       className={cn(
-        "animate-in fade-in slide-in-from-right-2 duration-200 rounded border p-2.5 transition-all duration-200 hover:border-primary/40",
+        "animate-in fade-in slide-in-from-right-2 duration-200 rounded border p-2.5 transition-all hover:border-primary/40",
         isComplete ? `border-primary/40 ${bgClass}` : `border-border/50 ${bgClass}`,
       )}
     >
@@ -84,13 +84,6 @@ const DEFAULT_STYLE_OPTIONS = ["modern", "traditional", "minimalist", "scandinav
 const DEFAULT_COLOR_OPTIONS = ["blue", "green", "neutral", "warm tones", "cool tones"]
 const DEFAULT_FURNITURE_OPTIONS = ["sofa", "bed", "dining table", "coffee table", "lighting"]
 
-const FIELD_TO_KEY: Record<string, string> = {
-  roomType: "roomType",
-  style: "designStyle",
-  budget: "budget",
-  color: "colorPref",
-  furniture: "furnitureNeeds",
-}
 const KEY_TO_FIELD: Record<string, string> = {
   roomType: "roomType",
   designStyle: "style",
@@ -109,7 +102,7 @@ function optionsFromField(field: DomainFieldConfig | undefined, fallback: string
   return Array.isArray(opts) && opts.length > 0 ? opts : fallback
 }
 
-export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
+export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
   const { selectedAssistant, setShowAssistantPicker } = useWorkspaceContext()
   const { conversationId } = useCurrentConversation()
   const { preferences, setPreferences } = useCurrentPreferences()
@@ -117,11 +110,11 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
   const [prefsLoading, setPrefsLoading] = useState(true)
   const [domainFields, setDomainFields] = useState<DomainFieldConfig[]>([])
 
-  const [roomType, setRoomType] = useState<string | null>(null)
-  const [budget, setBudget] = useState<string | null>(null)
-  const [designStyle, setDesignStyle] = useState<string | null>(null)
-  const [colorPref, setColorPref] = useState<string | null>(null)
-  const [furnitureNeeds, setFurnitureNeeds] = useState<string | null>(null)
+  const roomType = preferences.roomType ?? null
+  const budget = preferences.budget ?? null
+  const designStyle = preferences.style ?? null
+  const colorPref = preferences.color ?? null
+  const furnitureNeeds = preferences.furniture ?? null
 
   useEffect(() => {
     apiGet<{ fields?: DomainFieldConfig[] }>(API_ROUTES.config)
@@ -139,11 +132,6 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
   useEffect(() => {
     if (!conversationId) {
       setPrefsLoading(false)
-      setRoomType(null)
-      setBudget(null)
-      setDesignStyle(null)
-      setColorPref(null)
-      setFurnitureNeeds(null)
       setPreferences({})
       return
     }
@@ -151,36 +139,17 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
     apiGet<{ field: string; value: string }[]>(API_ROUTES.conversationPreferences(conversationId))
       .then((prefs) => {
         const map: Record<string, string> = {}
-        const keyToVal: Record<string, string | null> = {
-          roomType: null,
-          budget: null,
-          designStyle: null,
-          colorPref: null,
-          furnitureNeeds: null,
-        }
         prefs.forEach((p) => {
           map[p.field] = p.value
-          const key = FIELD_TO_KEY[p.field]
-          if (key) keyToVal[key] = p.value
         })
         setPreferences(map)
-        setRoomType(keyToVal.roomType ?? null)
-        setBudget(keyToVal.budget ?? null)
-        setDesignStyle(keyToVal.designStyle ?? null)
-        setColorPref(keyToVal.colorPref ?? null)
-        setFurnitureNeeds(keyToVal.furnitureNeeds ?? null)
       })
-      .catch(() => {})
+      .catch(() => toast.error("Failed to load preferences"))
       .finally(() => setPrefsLoading(false))
   }, [conversationId, setPreferences])
 
   const handlePreferenceChange = async (key: string, value: string | null) => {
     const field = KEY_TO_FIELD[key]
-    if (key === "roomType") setRoomType(value)
-    else if (key === "budget") setBudget(value)
-    else if (key === "designStyle") setDesignStyle(value)
-    else if (key === "colorPref") setColorPref(value)
-    else if (key === "furnitureNeeds") setFurnitureNeeds(value)
     const next = { ...preferences }
     if (value) {
       next[field] = value
@@ -188,7 +157,7 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
       if (conversationId) {
         await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field, value })
           .then(() => toast.success(`Preference updated: ${field}`))
-          .catch(() => {})
+          .catch(() => toast.error("Failed to update preference"))
       }
     } else {
       delete next[field]
@@ -196,7 +165,7 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
       if (conversationId) {
         await apiDelete(API_ROUTES.conversationPreferences(conversationId), { field })
           .then(() => toast.success("Preference removed"))
-          .catch(() => {})
+          .catch(() => toast.error("Failed to update preference"))
       }
     }
   }
@@ -247,7 +216,7 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
                       toast.info("Brainstorm ideas added to chat")
                     }
                   } catch {
-                    // ignore
+                    toast.error("Brainstorm generation failed")
                   } finally {
                     setBrainstormLoading(false)
                   }
@@ -272,7 +241,7 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
                         a.click()
                         URL.revokeObjectURL(a.href)
                       })
-                      .catch(() => {})
+                      .catch(() => toast.error("Export failed"))
                   }}
                   className="w-full flex items-center justify-center gap-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer"
                 >
@@ -344,4 +313,4 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
         </div>
     </aside>
   )
-}
+});

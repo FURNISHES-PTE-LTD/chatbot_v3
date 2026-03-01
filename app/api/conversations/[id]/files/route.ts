@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { requireConversationAccess } from "@/lib/auth-helpers"
 
 /**
  * Return list of files (uploads) for a conversation.
@@ -8,6 +9,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
+  const { error, status } = await requireConversationAccess(id)
+  if (error) return Response.json({ error }, { status })
   const rows = await prisma.file.findMany({
     where: { conversationId: id },
     orderBy: { createdAt: "desc" },

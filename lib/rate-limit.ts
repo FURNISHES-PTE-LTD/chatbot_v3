@@ -5,6 +5,12 @@ export function checkRateLimit(key: string, limit = 30, windowMs = 60000): boole
   const entry = requests.get(key)
   if (!entry || now > entry.resetAt) {
     requests.set(key, { count: 1, resetAt: now + windowMs })
+    // Opportunistic cleanup when map gets large
+    if (requests.size > 5000) {
+      for (const [k, v] of requests) {
+        if (now > v.resetAt) requests.delete(k)
+      }
+    }
     return true
   }
   if (entry.count >= limit) return false

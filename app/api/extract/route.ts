@@ -22,7 +22,10 @@ import {
   detectStateChangeIntent,
   createStateChangeUpdate,
 } from "@/lib/extraction/state-change"
-import { applyVerifierToEntities } from "@/lib/extraction/verifier"
+import {
+  applyVerifierToEntities,
+  type EntityWithEvidence,
+} from "@/lib/extraction/verifier"
 import {
   getOpenAIKey,
   OPENAI_KEY_MISSING_MESSAGE,
@@ -30,12 +33,6 @@ import {
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
 } from "@/lib/openai"
-
-function getExtractionFieldEnum() {
-  const fieldIds = getFieldIds()
-  const tuple = (fieldIds.length > 0 ? fieldIds : ["roomType"]) as [string, ...string[]]
-  return z.enum(tuple)
-}
 
 const ExtractRequestSchema = z.object({
   messageId: z.string().optional().nullable(),
@@ -49,18 +46,28 @@ const EvidenceSpanSchema = z.object({
   text: z.string(),
 })
 
-const ExtractionSchema = z.object({
-  entities: z.array(
-    z.object({
-      text: z.string(),
-      field: getExtractionFieldEnum(),
-      confidence: z.number().min(0).max(1),
-      evidenceSpans: z.array(EvidenceSpanSchema).optional(),
-    }),
-  ),
-})
+let _extractionSchema: z.ZodObject<{ entities: z.ZodArray<z.ZodObject<any>> }> | null = null
 
-type ExtractionEntity = z.infer<typeof ExtractionSchema>["entities"][number]
+function getExtractionSchema(): z.ZodObject<{ entities: z.ZodArray<z.ZodObject<any>> }> {
+  if (!_extractionSchema) {
+    const fieldIds = getFieldIds()
+    const tuple = (fieldIds.length > 0 ? fieldIds : ["roomType"]) as [string, ...string[]]
+    const fieldEnum = z.enum(tuple)
+    _extractionSchema = z.object({
+      entities: z.array(
+        z.object({
+          text: z.string(),
+          field: fieldEnum,
+          confidence: z.number().min(0).max(1),
+          evidenceSpans: z.array(EvidenceSpanSchema).optional(),
+        }),
+      ),
+    })
+  }
+  return _extractionSchema
+}
+
+type ExtractionEntity = z.infer<ReturnType<typeof getExtractionSchema>>["entities"][number]
 
 function expandMessageVocabulary(content: string): string {
   return content
@@ -116,18 +123,19 @@ For each entity you extract, include evidenceSpans: array of { start, end, text 
 
 Message: "${expandedContent}"`
 
+  const schema = getExtractionSchema()
   const result = await withFallback(
     () =>
       generateObject({
         model: openai(OPENAI_PRIMARY_MODEL),
-        schema: zodSchema(ExtractionSchema),
+        schema: zodSchema(schema),
         prompt: enrichedPrompt,
         maxRetries: 3,
       }),
     () =>
       generateObject({
         model: openai(OPENAI_FALLBACK_MODEL),
-        schema: zodSchema(ExtractionSchema),
+        schema: zodSchema(schema),
         prompt: enrichedPrompt,
         maxRetries: 2,
       })
@@ -138,7 +146,7 @@ Message: "${expandedContent}"`
     [...object.entities]
 
   // 2b. Verifier: reduce confidence by 0.2 when no valid evidence (Gap 4)
-  entities = applyVerifierToEntities(entities, content) as typeof entities
+  entities = applyVerifierToEntities(entities as EntityWithEvidence[], content) as typeof entities
 
   // 3. Add exclusion entities from negation result if not already covered
   if (negationResult.hasNegation && negationResult.negatedTerms.length > 0) {
@@ -198,26 +206,28 @@ Message: "${expandedContent}"`
       currentPrefs,
       recentContents
     )
-    for (const { field, value } of updates) {
-      const existing = currentPrefs[field]
-      await prisma.preferenceChange.create({
-        data: {
-          conversationId,
-          field,
-          oldValue: existing ?? null,
-          newValue: value,
-          confidence: 1,
-          changeType: existing ? "update" : "set",
-          sourceMessageId: messageId ?? null,
-        },
-      })
-      await prisma.preference.upsert({
-        where: { conversationId_field: { conversationId, field } },
-        create: { conversationId, field, value, confidence: 1, status: "confirmed" },
-        update: { value, confidence: 1, status: "confirmed" },
-      })
-      currentPrefs[field] = value
-    }
+    await prisma.$transaction(async (tx) => {
+      for (const { field, value } of updates) {
+        const existing = currentPrefs[field]
+        await tx.preferenceChange.create({
+          data: {
+            conversationId,
+            field,
+            oldValue: existing ?? null,
+            newValue: value,
+            confidence: 1,
+            changeType: existing ? "update" : "set",
+            sourceMessageId: messageId ?? null,
+          },
+        })
+        await tx.preference.upsert({
+          where: { conversationId_field: { conversationId, field } },
+          create: { conversationId, field, value, confidence: 1, status: "confirmed" },
+          update: { value, confidence: 1, status: "confirmed" },
+        })
+        currentPrefs[field] = value
+      }
+    })
   }
 
   for (const entity of entities) {
@@ -240,53 +250,54 @@ Message: "${expandedContent}"`
     })
   }
 
-  for (const entity of entities) {
-    if (entity.needsConfirmation) continue
-    // Skip persisting when uncertainty is exploratory (confidence forced to 0)
-    if (uncertainty.level === UncertaintyLevel.EXPLORATORY || entity.confidence <= 0) continue
-    const existing = currentPrefs[entity.field]
-    const changeType = existing ? "update" : "set"
-    await prisma.preferenceChange.create({
-      data: {
-        conversationId,
-        field: entity.field,
-        oldValue: existing ?? null,
-        newValue: entity.text,
-        confidence: entity.confidence,
-        changeType,
-        sourceMessageId: messageId ?? null,
-      },
-    })
-    await prisma.preference.upsert({
-      where: {
-        conversationId_field: { conversationId, field: entity.field },
-      },
-      create: {
-        conversationId,
-        field: entity.field,
-        value: entity.text,
-        confidence: entity.confidence,
-        status:
-          entity.confidence > 0.85
-            ? "confirmed"
-            : entity.confidence > 0.6
-              ? "potential"
-              : "inferred",
-        source: messageId ?? undefined,
-      },
-      update: {
-        value: entity.text,
-        confidence: entity.confidence,
-        status:
-          entity.confidence > 0.85
-            ? "confirmed"
-            : entity.confidence > 0.6
-              ? "potential"
-              : "inferred",
-        source: messageId ?? undefined,
-      },
-    })
-  }
+  await prisma.$transaction(async (tx) => {
+    for (const entity of entities) {
+      if (entity.needsConfirmation) continue
+      if (uncertainty.level === UncertaintyLevel.EXPLORATORY || entity.confidence <= 0) continue
+      const existing = currentPrefs[entity.field]
+      const changeType = existing ? "update" : "set"
+      await tx.preferenceChange.create({
+        data: {
+          conversationId,
+          field: entity.field,
+          oldValue: existing ?? null,
+          newValue: entity.text,
+          confidence: entity.confidence,
+          changeType,
+          sourceMessageId: messageId ?? null,
+        },
+      })
+      await tx.preference.upsert({
+        where: {
+          conversationId_field: { conversationId, field: entity.field },
+        },
+        create: {
+          conversationId,
+          field: entity.field,
+          value: entity.text,
+          confidence: entity.confidence,
+          status:
+            entity.confidence > 0.85
+              ? "confirmed"
+              : entity.confidence > 0.6
+                ? "potential"
+                : "inferred",
+          source: messageId ?? undefined,
+        },
+        update: {
+          value: entity.text,
+          confidence: entity.confidence,
+          status:
+            entity.confidence > 0.85
+              ? "confirmed"
+              : entity.confidence > 0.6
+                ? "potential"
+                : "inferred",
+          source: messageId ?? undefined,
+        },
+      })
+    }
+  })
 
   return Response.json({ entities })
 }

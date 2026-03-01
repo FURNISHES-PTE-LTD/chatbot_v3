@@ -5,14 +5,14 @@ import { WorkspaceProvider, useWorkspaceContext } from "@/lib/contexts/workspace
 import { CurrentConversationProvider } from "@/lib/contexts/current-conversation-context"
 import { CurrentPreferencesProvider } from "@/lib/contexts/current-preferences-context"
 import { ChatProvider } from "@/lib/contexts/chat-context"
-import { ErrorBoundary } from "@/components/error-boundary"
+import ErrorBoundary from "@/components/error-boundary"
 import type { RecentItem } from "@/lib/types"
 import { LeftSidebar } from "./left-sidebar"
 import { RightSidebar } from "./right-sidebar"
 import { MainContent } from "./main-content"
 import { Navbar } from "./navbar"
 import { TutorialGuide } from "./tutorial-guide"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Menu } from "lucide-react"
 import { apiGet, API_ROUTES } from "@/lib/api"
 
@@ -37,7 +37,7 @@ function DashboardLayoutInner() {
       .catch(console.error)
   }, [])
 
-  const handleItemClick = (id: string, label: string) => {
+  const handleItemClick = useCallback((id: string, label: string) => {
     let itemId = id
 
     if (id === "new-chat") {
@@ -52,7 +52,7 @@ function DashboardLayoutInner() {
       setWorkspaceListKey((k) => k + 1)
     }
     setActiveItem(itemId)
-  }
+  }, [setShowAssistantPicker])
 
   const handleFurnishesClick = () => {
     setActiveItem("landing")
@@ -62,28 +62,35 @@ function DashboardLayoutInner() {
     setIsTutorialOpen(true)
   }
 
-  const onConversationTitleGenerated = (oldRecentId: string, convoId: string, title: string) => {
+  const onConversationTitleGenerated = useCallback((oldRecentId: string, convoId: string, title: string) => {
     const newId = `convo-${convoId}`
     setRecents((prev) =>
       prev.map((r) => (r.id === oldRecentId ? { id: newId, label: title } : r)),
     )
-    if (activeItem === oldRecentId) setActiveItem(newId)
-  }
+    setActiveItem((current) => (current === oldRecentId ? newId : current))
+  }, [])
 
-  const removeRecent = (id: string) => {
+  const removeRecent = useCallback((id: string) => {
     setRecents((prev) => prev.filter((r) => r.id !== id))
-    if (activeItem === id) setActiveItem("new-chat")
-  }
+    setActiveItem((current) => (current === id ? "new-chat" : current))
+  }, [])
 
-  const appContextValue = {
-    activeItem,
-    setActiveItem,
-    recents,
-    addRecent: (item: RecentItem) => setRecents((prev) => [item, ...prev]),
-    removeRecent,
-    onItemClick: handleItemClick,
-    onConversationTitleGenerated,
-  }
+  const addRecent = useCallback((item: RecentItem) => {
+    setRecents((prev) => [item, ...prev])
+  }, [])
+
+  const appContextValue = useMemo(
+    () => ({
+      activeItem,
+      setActiveItem,
+      recents,
+      addRecent,
+      removeRecent,
+      onItemClick: handleItemClick,
+      onConversationTitleGenerated,
+    }),
+    [activeItem, recents, addRecent, removeRecent, handleItemClick, onConversationTitleGenerated]
+  )
 
   return (
     <AppProvider value={appContextValue}>

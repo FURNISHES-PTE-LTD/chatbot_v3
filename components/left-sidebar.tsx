@@ -13,14 +13,24 @@ import {
   Download,
   List,
 } from "lucide-react"
-import { DEFAULT_RECENTS } from "@/lib/mock-data"
 import { useAppContext } from "@/lib/contexts/app-context"
 import { toast } from "sonner"
 import { apiDelete, API_ROUTES } from "@/lib/api"
 import { IconButton } from "@/components/shared/icon-button"
 import { SectionLabel } from "@/components/shared/section-label"
 import { cn } from "@/lib/utils"
-import { useState, useEffect } from "react"
+import { useState, useEffect, memo } from "react"
+import { TypingText } from "@/components/shared/typing-text"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 type NavItem = {
   icon: React.ComponentType<{ className?: string }>
@@ -63,20 +73,27 @@ interface LeftSidebarProps {
 
 const WELCOME_TEXT = "Welcome back !"
 
-export function LeftSidebar({ onHelpClick, isOverlay, onCloseMobileMenu }: LeftSidebarProps) {
-  const { activeItem, recents = DEFAULT_RECENTS, onItemClick, removeRecent } = useAppContext()
-  const [typedLength, setTypedLength] = useState(0)
+export const LeftSidebar = memo(function LeftSidebar({ onHelpClick, isOverlay, onCloseMobileMenu }: LeftSidebarProps) {
+  const { activeItem, recents = [], onItemClick, removeRecent } = useAppContext()
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null)
 
   const handleItemClick = (id: string, label: string) => {
     onItemClick(id, label)
     onCloseMobileMenu?.()
   }
 
-  useEffect(() => {
-    if (typedLength >= WELCOME_TEXT.length) return
-    const t = setTimeout(() => setTypedLength((n) => n + 1), 90)
-    return () => clearTimeout(t)
-  }, [typedLength])
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return
+    const convoId = deleteTarget.id.startsWith("convo-") ? deleteTarget.id.replace(/^convo-/, "") : null
+    if (convoId) {
+      apiDelete(API_ROUTES.conversation(convoId))
+        .then(() => removeRecent(deleteTarget.id))
+        .catch(() => toast.error("Could not delete conversation"))
+    } else {
+      removeRecent(deleteTarget.id)
+    }
+    setDeleteTarget(null)
+  }
 
   return (
     <>
@@ -88,10 +105,7 @@ export function LeftSidebar({ onHelpClick, isOverlay, onCloseMobileMenu }: LeftS
           >
               <div className="flex w-full items-center">
                 <div className="flex-1 min-w-0 font-medium text-[13px] leading-[1.3] text-foreground">
-                  <span>{WELCOME_TEXT.slice(0, typedLength)}</span>
-                  <span className="ml-0.5 inline-block w-[1ch] animate-cursor-blink text-orange-500" aria-hidden="true">
-                    _
-                  </span>
+                  <TypingText text={WELCOME_TEXT} speed={90} />
                 </div>
                 <IconButton icon={CircleHelp} title="Help & Tutorial" onClick={onHelpClick} />
               </div>
@@ -157,15 +171,7 @@ export function LeftSidebar({ onHelpClick, isOverlay, onCloseMobileMenu }: LeftS
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation()
-                            if (!window.confirm("Are you sure you want to delete this conversation?")) return
-                            const convoId = item.id.startsWith("convo-") ? item.id.replace(/^convo-/, "") : null
-                            if (convoId) {
-                              apiDelete(API_ROUTES.conversation(convoId))
-                                .then(() => removeRecent(item.id))
-                                .catch(() => toast.error("Could not delete conversation"))
-                            } else {
-                              removeRecent(item.id)
-                            }
+                            setDeleteTarget({ id: item.id, label: item.label })
                           }}
                           className="shrink-0 p-0.5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
                           title="Delete conversation"
@@ -180,6 +186,22 @@ export function LeftSidebar({ onHelpClick, isOverlay, onCloseMobileMenu }: LeftS
           </nav>
         </div>
       </aside>
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{deleteTarget?.label}&quot;? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
-}
+});

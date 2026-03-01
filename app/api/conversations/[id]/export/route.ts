@@ -7,6 +7,7 @@ import { openai } from "@ai-sdk/openai"
 import { zodSchema } from "ai"
 import { z } from "zod"
 import { prisma } from "@/lib/db"
+import { requireConversationAccess } from "@/lib/auth-helpers"
 import {
   getOpenAIKey,
   withFallback,
@@ -25,6 +26,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
+  const { error, status } = await requireConversationAccess(id)
+  if (error) return Response.json({ error }, { status })
   const url = new URL(req.url)
   const format = (url.searchParams.get("format") ?? "markdown").toLowerCase()
   const validFormat = format === "json" || format === "markdown" ? format : "markdown"

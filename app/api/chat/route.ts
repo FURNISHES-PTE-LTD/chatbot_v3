@@ -20,8 +20,11 @@ import {
   getOpenAIKey,
   OPENAI_KEY_MISSING_MESSAGE,
   OPENAI_PRIMARY_MODEL,
+  OPENAI_FALLBACK_MODEL,
   computeCost,
+  withFallback,
 } from "@/lib/openai"
+import { checkCostLimit } from "@/lib/cost-tracker"
 
 const RequestSchema = z.object({
   conversationId: z.string().optional(),
@@ -92,46 +95,81 @@ export async function POST(req: Request) {
     summarizeAfter: convCfg.summarize_after,
   })
 
+  if (convoId) {
+    const { allowed, limit } = await checkCostLimit(convoId)
+    if (!allowed) {
+      return Response.json(
+        {
+          error: `This conversation has reached its usage limit ($${limit}). Please start a new conversation.`,
+        },
+        { status: 429 }
+      )
+    }
+  }
+
   const basePrompt = (domainConfig.system_prompt || "").trim() + systemSuffix
   const systemPrompt = buildSafeSystemPrompt(basePrompt)
 
-  const result = streamText({
-    model: openai(OPENAI_PRIMARY_MODEL),
+  const streamOptions = {
     system: systemPrompt,
     messages: messages.map((m) => ({
       role: m.role as "user" | "assistant" | "system",
       content: m.content,
     })),
-    maxRetries: 3,
-    onFinish: ({ usage }) => {
+    abortSignal: req.signal,
+    onFinish: ({ usage }: { usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number } }) => {
       if (usage) {
         const costUsd = computeCost(usage, OPENAI_PRIMARY_MODEL)
         log({
           level: "info",
           event: "llm_usage",
           conversationId: convoId,
-          promptTokens: usage.promptTokens,
-          completionTokens: usage.completionTokens,
-          totalTokens: usage.totalTokens,
+          promptTokens: usage.promptTokens ?? 0,
+          completionTokens: usage.completionTokens ?? 0,
+          totalTokens: usage.totalTokens ?? 0,
           model: OPENAI_PRIMARY_MODEL,
           costUsd: Math.round(costUsd * 1e6) / 1e6,
         })
       }
     },
-  })
+  }
 
-  result.text.then(async (fullText) => {
-    const sanitized = sanitizeOutput(fullText)
-    await prisma.message.create({
-      data: { conversationId: convoId!, role: "assistant", content: sanitized },
+  let result: Awaited<ReturnType<typeof streamText>>
+  try {
+    result = await streamText({
+      model: openai(OPENAI_PRIMARY_MODEL),
+      ...streamOptions,
+      maxRetries: 3,
     })
-    log({
-      level: "info",
-      event: "chat_response",
-      conversationId: convoId,
-      latencyMs: Date.now() - start,
+  } catch {
+    result = await streamText({
+      model: openai(OPENAI_FALLBACK_MODEL),
+      ...streamOptions,
+      maxRetries: 2,
     })
-  })
+  }
+
+  void Promise.resolve(result.text)
+    .then(async (fullText) => {
+      const sanitized = sanitizeOutput(fullText)
+      await prisma.message.create({
+        data: { conversationId: convoId!, role: "assistant", content: sanitized },
+      })
+      log({
+        level: "info",
+        event: "chat_response",
+        conversationId: convoId,
+        latencyMs: Date.now() - start,
+      })
+    })
+    .catch((err) => {
+      log({
+        level: "error",
+        event: "message_persist_failed",
+        conversationId: convoId,
+        error: String(err),
+      })
+    })
 
   const response = result.toTextStreamResponse({
     headers: { "X-Conversation-Id": convoId },

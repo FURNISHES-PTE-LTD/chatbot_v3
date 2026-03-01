@@ -7,13 +7,16 @@ datasource db {
 }
 
 model Conversation {
-  id        String   @id @default(cuid())
-  title     String   @default("New Chat")
-  userId    String?  // optional until auth is required
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  messages  Message[]
+  id                String            @id @default(cuid())
+  title             String            @default("New Chat")
+  userId            String?            // optional until auth is required
+  user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  messages          Message[]
+  preferences       Preference[]
+  preferenceChanges PreferenceChange[]
+  files             File[]
 }
 
 model Account {
@@ -47,6 +50,7 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
+  role          String    @default("user") // "user" | "admin"
   accounts      Account[]
   sessions      Session[]
   conversations Conversation[]
@@ -87,42 +91,45 @@ model MessageFeedback {
 }
 
 model Preference {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   conversationId String
-  field          String   // "roomType" | "style" | "budget" | "color" | "furniture"
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  field          String       // "roomType" | "style" | "budget" | "color" | "furniture"
   value          String
-  confidence     Float    @default(0.5)
-  status         String   @default("potential") // "confirmed" | "potential" | "inferred"
-  source         String?  // messageId that established this
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  confidence     Float        @default(0.5)
+  status         String       @default("potential") // "confirmed" | "potential" | "inferred"
+  source         String?      // messageId that established this
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@unique([conversationId, field])
   @@index([conversationId])
 }
 
 model PreferenceChange {
-  id               String   @id @default(cuid())
+  id               String       @id @default(cuid())
   conversationId   String
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   field            String
   oldValue         String?
   newValue         String
-  confidence       Float    @default(0.5)
-  changeType       String   @default("set") // set | update | confirm | reject
-  confirmed        Boolean  @default(false)
-  sourceMessageId String?
-  createdAt        DateTime @default(now())
+  confidence       Float        @default(0.5)
+  changeType       String       @default("set") // set | update | confirm | reject
+  confirmed        Boolean      @default(false)
+  sourceMessageId  String?
+  createdAt        DateTime     @default(now())
 
   @@index([conversationId])
 }
 
 model File {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   filename       String
   url            String
-  type           String?  // e.g. image/jpeg, image/png
-  createdAt      DateTime @default(now())
+  type           String?      // e.g. image/jpeg, image/png
+  createdAt      DateTime     @default(now())
 
   @@index([conversationId])
 }

@@ -1,23 +1,42 @@
 /**
  * Get LLM-powered design/product recommendations from conversation preferences.
- * Ported from V2 recommendations.py.
+ * Uses Vercel AI SDK generateObject with structured output.
  */
+import { generateObject } from "ai"
+import { openai } from "@ai-sdk/openai"
+import { zodSchema } from "ai"
+import { z } from "zod"
 import { prisma } from "@/lib/db"
+import { requireConversationAccess } from "@/lib/auth-helpers"
 import { getDomainConfig } from "@/lib/domain-config"
 import { getPreferencesAsRecord } from "@/lib/api-helpers"
 import {
   getOpenAIKey,
-  requireOpenAIKey,
   withFallback,
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
 } from "@/lib/openai"
+
+const RecommendationsSchema = z.object({
+  items: z.array(
+    z.object({
+      name: z.string(),
+      category: z.string(),
+      why_it_fits: z.string(),
+      estimated_price: z.number().nullable(),
+    })
+  ),
+  suggestions: z.array(z.string()),
+  budget_breakdown: z.record(z.unknown()),
+})
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
+  const { error, status } = await requireConversationAccess(id)
+  if (error) return Response.json({ error }, { status })
   const preferences = await getPreferencesAsRecord(prisma, id)
 
   const domainConfig = getDomainConfig()
@@ -38,43 +57,31 @@ export async function GET(
 Preferences:
 ${prefsStr}
 
-Respond with a single JSON object with exactly these keys:
-- "items": array of objects, each with "name", "category", "why_it_fits" (short sentence), "estimated_price" (number or null). Max ${maxItems} items.
+Return:
+- "items": array of objects with "name", "category", "why_it_fits" (short sentence), "estimated_price" (number or null). Max ${maxItems} items.
 - "suggestions": array of short strings (design or product suggestions).
-- "budget_breakdown": object with category keys and numeric "amount" or "range" (e.g. "100-200") and optional "notes".
-Output only valid JSON, no markdown.`
-    const call = (model: string) =>
-      fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${requireOpenAIKey()}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.3,
-          max_tokens: 1500,
+- "budget_breakdown": object with category keys and numeric or range values and optional "notes".`
+
+    const result = await withFallback(
+      () =>
+        generateObject({
+          model: openai(OPENAI_PRIMARY_MODEL),
+          schema: zodSchema(RecommendationsSchema),
+          prompt,
+          maxRetries: 3,
         }),
-      })
-    const res = await withFallback(
-      () => call(OPENAI_PRIMARY_MODEL),
-      () => call(OPENAI_FALLBACK_MODEL)
+      () =>
+        generateObject({
+          model: openai(OPENAI_FALLBACK_MODEL),
+          schema: zodSchema(RecommendationsSchema),
+          prompt,
+          maxRetries: 2,
+        })
     )
-    if (!res.ok) return Response.json({ items: [], suggestions: [], budget_breakdown: {} })
-    const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
-    let content = (data.choices?.[0]?.message?.content ?? "").trim()
-    if (content.startsWith("```")) {
-      content = content.replace(/^```\w*\n?/, "").replace(/\n?```$/, "").trim()
-    }
-    const parsed = JSON.parse(content) as {
-      items?: Array<{ name: string; category: string; why_it_fits: string; estimated_price?: number | null }>
-      suggestions?: string[]
-      budget_breakdown?: Record<string, unknown>
-    }
-    const items = (parsed.items ?? []).slice(0, maxItems)
-    const suggestions = parsed.suggestions ?? []
-    const budget_breakdown = parsed.budget_breakdown ?? {}
+    const { object } = result
+    const items = (object.items ?? []).slice(0, maxItems)
+    const suggestions = object.suggestions ?? []
+    const budget_breakdown = object.budget_breakdown ?? {}
     return Response.json({ items, suggestions, budget_breakdown })
   } catch {
     return Response.json({ items: [], suggestions: [], budget_breakdown: {} })
