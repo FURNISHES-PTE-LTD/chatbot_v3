@@ -155,17 +155,23 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
       next[field] = value
       setPreferences(next)
       if (conversationId) {
-        await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field, value })
-          .then(() => toast.success(`Preference updated: ${field}`))
-          .catch(() => toast.error("Failed to update preference"))
+        try {
+          await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field, value })
+          toast.success(`Preference updated: ${field}`)
+        } catch {
+          toast.error("Failed to update preference")
+        }
       }
     } else {
       delete next[field]
       setPreferences(next)
       if (conversationId) {
-        await apiDelete(API_ROUTES.conversationPreferences(conversationId), { field })
-          .then(() => toast.success("Preference removed"))
-          .catch(() => toast.error("Failed to update preference"))
+        try {
+          await apiDelete(API_ROUTES.conversationPreferences(conversationId), { field })
+          toast.success("Preference removed")
+        } catch {
+          toast.error("Failed to update preference")
+        }
       }
     }
   }

@@ -97,7 +97,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
       const timer = setTimeout(() => {
         apiPost<{ suggestions?: string[] }>(API_ROUTES.suggestions, { conversationId: currentConvoId })
           .then((data) => data.suggestions?.length && setSuggestions(data.suggestions))
-          .catch(() => {})
+          .catch((err) => console.error("Suggestions fetch failed", err))
       }, 1500)
       return () => clearTimeout(timer)
     }
@@ -220,7 +220,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                         type="button"
                         onClick={() => {
                           if (!messageId || sent) return
-                          apiPost(API_ROUTES.messageFeedback(messageId), { rating: "positive" }).then(() => setFeedbackSent((prev) => ({ ...prev, [messageId]: "positive" }))).catch(() => {})
+                          apiPost(API_ROUTES.messageFeedback(messageId), { rating: "positive" }).then(() => setFeedbackSent((prev) => ({ ...prev, [messageId]: "positive" }))).catch(() => toast.error("Failed to send feedback"))
                         }}
                         className={cn(
                           "p-1 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer disabled:opacity-50",
@@ -235,7 +235,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                         type="button"
                         onClick={() => {
                           if (!messageId || sent) return
-                          apiPost(API_ROUTES.messageFeedback(messageId), { rating: "negative" }).then(() => setFeedbackSent((prev) => ({ ...prev, [messageId]: "negative" }))).catch(() => {})
+                          apiPost(API_ROUTES.messageFeedback(messageId), { rating: "negative" }).then(() => setFeedbackSent((prev) => ({ ...prev, [messageId]: "negative" }))).catch(() => toast.error("Failed to send feedback"))
                         }}
                         className={cn(
                           "p-1 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer disabled:opacity-50",

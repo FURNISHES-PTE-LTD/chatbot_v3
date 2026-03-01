@@ -5,9 +5,14 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().min(1, "OPENAI_API_KEY is required").optional(),
   NEXTAUTH_SECRET: z
     .string()
-    .min(1)
     .optional()
-    .transform((v) => v ?? "build-placeholder-secret"),
+    .transform((v) => {
+      const isProd = process.env.NODE_ENV === "production"
+      if (isProd && (!v || !v.trim())) {
+        throw new Error("NEXTAUTH_SECRET is required in production. Set it in your environment.")
+      }
+      return v?.trim() ? v : "build-placeholder-secret"
+    }),
   NEXTAUTH_URL: z
     .string()
     .url()
