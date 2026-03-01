@@ -1,11 +1,8 @@
 "use client"
 
-import { useTheme } from "next-themes"
 import { Switch } from "@/components/ui/switch"
 
 export function SettingsView() {
-  const { theme, setTheme } = useTheme()
-
   return (
     <div className="h-full overflow-y-auto p-6">
       <h1 className="text-xl font-semibold text-foreground mb-6">Settings</h1>
@@ -17,17 +14,9 @@ export function SettingsView() {
             <div className="flex items-center justify-between py-2">
               <div>
                 <p className="text-sm font-medium text-foreground">Theme</p>
-                <p className="text-xs text-muted-foreground">Choose your interface theme</p>
+                <p className="text-xs text-muted-foreground">Light mode</p>
               </div>
-              <select
-                value={theme ?? "system"}
-                onChange={(e) => setTheme(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-border bg-background text-sm cursor-pointer"
-              >
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-                <option value="system">System</option>
-              </select>
+              <span className="text-sm text-muted-foreground">Light</span>
             </div>
             <div className="flex items-center justify-between py-2">
               <div>

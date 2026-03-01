@@ -24,8 +24,13 @@ export const API_ROUTES = {
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }))
-    throw new Error((err as { error?: string }).error ?? res.statusText)
+    const err = await res
+      .json()
+      .catch(() => ({ error: res.statusText, status: res.status }))
+    const body = err as { error?: string; status?: number }
+    const message = body.error ?? res.statusText
+    const status = body.status ?? res.status
+    throw new Error(status >= 500 ? `Server error (${status}): ${message}` : message)
   }
   return res.json() as Promise<T>
 }
