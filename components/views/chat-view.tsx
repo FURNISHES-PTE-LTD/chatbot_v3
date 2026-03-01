@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { MessageSquarePlus, Send, Paperclip, Lightbulb, Check, Bookmark, Edit3, Home, Briefcase, Moon, Sun } from "lucide-react"
+import { useEffect, useState, useRef } from "react"
+import { MessageSquarePlus, Send, Paperclip, Lightbulb, Check, Bookmark, Edit3, Home, Briefcase, Moon, Sun, ThumbsUp, ThumbsDown } from "lucide-react"
 import { DEMO_RECENT_ID } from "@/lib/constants"
 import { MOCK_DEMO_MESSAGES, CHAT_SUGGESTION_CARDS } from "@/lib/mock-data"
 import type { DemoMessage } from "@/lib/mock-data"
@@ -51,6 +51,8 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
   const isDemoChat = activeItem === DEMO_RECENT_ID
   const messagesToShow = isDemoChat ? MOCK_DEMO_MESSAGES : chatMessages
   const currentConvoId = conversationIds[chatKey] ?? (chatKey.startsWith("convo-") ? chatKey.replace("convo-", "") : null)
+  const [feedbackSent, setFeedbackSent] = useState<Record<string, "positive" | "negative">>({})
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [suggestions, setSuggestions] = useState<string[]>([
     "Mood image",
     "Floorplan",
@@ -100,6 +102,28 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
     if (isDemoChat) return
     sendMessage(chatKey, inputValue.trim())
     setInputValue("")
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ""
+    const formData = new FormData()
+    formData.append("file", file)
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: formData })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        setInputValue((prev) => prev + (prev ? " " : "") + `[Upload failed: ${(err as { error?: string }).error ?? "unknown"}]`)
+        return
+      }
+      const data = (await res.json()) as { url?: string; filename?: string }
+      if (data.url) {
+        setInputValue((prev) => (prev ? `${prev} ` : "") + `I've attached an image: ${data.url}`)
+      }
+    } catch {
+      setInputValue((prev) => prev + (prev ? " " : "") + "[Upload failed]")
+    }
   }
 
   const handleSuggestionClick = (card: (typeof chatSuggestionCardsWithIcons)[0]) => {
@@ -188,9 +212,12 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
               )
             }
             const isUser = msg.role === "user"
+            const messageId = (msg as { id?: string }).id
+            const hasFeedback = messageId && !isUser
+            const sent = messageId ? feedbackSent[messageId] : null
             return (
               <div
-                key={demoMsg.id ?? i}
+                key={demoMsg.id ?? messageId ?? i}
                 className={cn(
                   "flex gap-2.5",
                   isUser ? "flex-row-reverse" : "",
@@ -204,6 +231,48 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                   {!isUser && demoMsg.extraction && (
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 border border-orange-100 text-xs text-orange-700 font-medium w-fit">
                       <Check className="w-3 h-3 text-orange-500" /> <span className="text-orange-600 font-normal">Captured:</span> {demoMsg.extraction.value}
+                    </div>
+                  )}
+                  {hasFeedback && (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!messageId || sent) return
+                          fetch(`/api/messages/${messageId}/feedback`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ rating: "positive" }),
+                          }).then(() => setFeedbackSent((prev) => ({ ...prev, [messageId]: "positive" }))).catch(() => {})
+                        }}
+                        className={cn(
+                          "p-1 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer disabled:opacity-50",
+                          sent === "positive" && "text-primary",
+                        )}
+                        disabled={!!sent}
+                        title="Good response"
+                      >
+                        <ThumbsUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!messageId || sent) return
+                          fetch(`/api/messages/${messageId}/feedback`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ rating: "negative" }),
+                          }).then(() => setFeedbackSent((prev) => ({ ...prev, [messageId]: "negative" }))).catch(() => {})
+                        }}
+                        className={cn(
+                          "p-1 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer disabled:opacity-50",
+                          sent === "negative" && "text-primary",
+                        )}
+                        disabled={!!sent}
+                        title="Bad response"
+                      >
+                        <ThumbsDown className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   )}
                   {isUser && (msg.extractions?.length ? (
@@ -258,7 +327,21 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
           ))}
         </div>
         <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-1.5 transition-all duration-200 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 mt-2">
-          <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <input
+            type="file"
+            ref={fileInputRef}
+            hidden
+            accept="image/*"
+            onChange={handleFileUpload}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="p-0.5 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+            title="Attach image"
+          >
+            <Paperclip className="h-4 w-4 shrink-0" />
+          </button>
           <Input
             placeholder="Ask about your design..."
             value={inputValue}

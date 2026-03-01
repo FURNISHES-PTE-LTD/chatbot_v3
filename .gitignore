@@ -23,6 +23,9 @@ yarn-error.log*
 *.db
 dev.db
 
+# uploads
+/uploads
+
 # vercel
 .vercel
 

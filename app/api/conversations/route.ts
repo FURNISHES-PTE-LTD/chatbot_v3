@@ -1,7 +1,13 @@
 import { prisma } from "@/lib/db"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 
 export async function GET() {
+  const session = await getServerSession(authOptions)
+  const userId = session?.user && "id" in session.user ? (session.user as { id: string }).id : null
+
   const conversations = await prisma.conversation.findMany({
+    where: userId ? { userId } : { userId: null },
     orderBy: { updatedAt: "desc" },
     take: 50,
     include: {

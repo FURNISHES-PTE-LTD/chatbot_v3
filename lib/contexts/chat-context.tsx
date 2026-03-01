@@ -144,6 +144,24 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
             .then((data: { title: string }) => onConversationTitleGenerated(key, newConvoId!, data.title))
             .catch(() => {})
         }
+        // Attach last message id so UI can show feedback
+        fetch(`/api/conversations/${newConvoId}`)
+          .then((r) => r.json())
+          .then((data: { messages?: { id: string }[] }) => {
+            const list = data.messages
+            const last = list?.length ? list[list.length - 1] : null
+            if (last?.id) {
+              setMessagesByKey((prev) => {
+                const msgs = prev[key] || []
+                const lastIdx = msgs.length - 1
+                if (lastIdx >= 0 && msgs[lastIdx].role === "assistant") {
+                  return { ...prev, [key]: [...msgs.slice(0, lastIdx), { ...msgs[lastIdx], id: last.id }] }
+                }
+                return prev
+              })
+            }
+          })
+          .catch(() => {})
       })
       .catch((err) => {
         const isNetwork = err instanceof TypeError && (err.message?.includes("fetch") ?? true)
@@ -167,10 +185,14 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
       const res = await fetch(`/api/conversations/${dbConversationId}`)
       if (!res.ok) return
       const data = await res.json()
-      const msgs: ChatMessage[] = (data.messages || []).map((m: { role: string; content: string }) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      }))
+      const msgs: ChatMessage[] = (data.messages || []).map(
+        (m: { id: string; role: string; content: string; extractions?: unknown }) => ({
+          id: m.id,
+          role: m.role as "user" | "assistant",
+          content: m.content,
+          extractions: m.extractions as ChatMessage["extractions"],
+        }),
+      )
       setMessagesByKey((prev) => ({ ...prev, [chatKey]: msgs }))
       setConversationIds((prev) => ({ ...prev, [chatKey]: dbConversationId }))
     } catch {

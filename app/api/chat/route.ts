@@ -5,6 +5,8 @@ import { z } from "zod"
 import { validateInput, buildSafeSystemPrompt } from "@/lib/guardrails"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { log } from "@/lib/logger"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 
 const RequestSchema = z.object({
   conversationId: z.string().optional(),
@@ -38,9 +40,14 @@ export async function POST(req: Request) {
     return Response.json({ error: validation.reason }, { status: 400 })
   }
 
+  const session = await getServerSession(authOptions)
+  const userId = session?.user && "id" in session.user ? (session.user as { id: string }).id : null
+
   let convoId = conversationId
   if (!convoId) {
-    const convo = await prisma.conversation.create({ data: {} })
+    const convo = await prisma.conversation.create({
+      data: userId ? { userId } : {},
+    })
     convoId = convo.id
   }
 

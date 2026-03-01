@@ -40,6 +40,7 @@ export interface ChatMessage {
   role: "user" | "assistant"
   content: string
   extractions?: { text: string; field: string; confidence: number }[]
+  id?: string // DB message id (for feedback)
 }
 
 export interface FileItem {
