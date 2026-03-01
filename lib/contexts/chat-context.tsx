@@ -3,10 +3,12 @@
 import React, { createContext, useContext, useState, useCallback } from "react"
 import type { ChatMessage } from "@/lib/types"
 import { AI_RESPONSE_DELAY_MS } from "@/lib/constants"
+import { useCurrentPreferences } from "@/lib/contexts/current-preferences-context"
 
 interface ChatContextValue {
   messagesByKey: Record<string, ChatMessage[]>
   sendMessage: (key: string, userContent: string, assistantReplyOverride?: string) => void
+  loadConversation: (chatKey: string, dbConversationId: string) => Promise<void>
   inputValue: string
   setInputValue: (value: string) => void
   pendingMessage: string | null
@@ -24,14 +26,16 @@ interface ChatProviderProps {
   pendingMessage?: string | null
   setPendingMessage?: (value: string | null) => void
   onClearPendingMessage?: () => void
+  onConversationTitleGenerated?: (oldRecentId: string, convoId: string, title: string) => void
 }
 
-export function ChatProvider({ children, pendingMessage: controlledPending, setPendingMessage: controlledSetPending, onClearPendingMessage }: ChatProviderProps) {
+export function ChatProvider({ children, pendingMessage: controlledPending, setPendingMessage: controlledSetPending, onClearPendingMessage, onConversationTitleGenerated }: ChatProviderProps) {
   const [messagesByKey, setMessagesByKey] = useState<Record<string, ChatMessage[]>>({})
   const [inputValue, setInputValue] = useState("")
   const [internalPending, setInternalPending] = useState<string | null>(null)
   const [isStreaming, setIsStreaming] = useState(false)
   const [conversationIds, setConversationIds] = useState<Record<string, string>>({})
+  const { preferences: currentPreferences } = useCurrentPreferences()
 
   const pendingMessage = controlledPending !== undefined ? controlledPending : internalPending
   const setPendingMessageState = controlledSetPending ?? setInternalPending
@@ -52,8 +56,12 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
     setMessagesByKey((prev) => ({ ...prev, [key]: [...(prev[key] || []), placeholder] }))
     setIsStreaming(true)
 
+    const userCountAfterThis = (messagesByKey[key] || []).filter((m) => m.role === "user").length + 1
+    const willBeSecondUserMessage = userCountAfterThis === 2
+
     const body: { conversationId?: string; message: string; preferences?: Record<string, string> } = {
       message: userContent,
+      preferences: currentPreferences && Object.keys(currentPreferences).length > 0 ? currentPreferences : undefined,
     }
     const convoId = conversationIds[key]
     if (convoId) body.conversationId = convoId
@@ -67,6 +75,27 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
         const newConvoId = response.headers.get("X-Conversation-Id")
         if (newConvoId) {
           setConversationIds((prev) => ({ ...prev, [key]: newConvoId }))
+          fetch("/api/extract", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              conversationId: newConvoId,
+              content: userContent,
+            }),
+          })
+            .then((r) => r.json())
+            .then((data: { entities?: { text: string; field: string; confidence: number }[] }) => {
+              if (!data.entities?.length) return
+              setMessagesByKey((prev) => {
+                const list = prev[key] || []
+                const lastUserIdx = list.map((m) => m.role).lastIndexOf("user")
+                if (lastUserIdx < 0) return prev
+                const copy = [...list]
+                copy[lastUserIdx] = { ...copy[lastUserIdx], extractions: data.entities }
+                return { ...prev, [key]: copy }
+              })
+            })
+            .catch(() => {})
         }
         if (!response.ok) {
           const err = await response.json().catch(() => ({ error: response.statusText }))
@@ -109,19 +138,45 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
             return { ...prev, [key]: [...list, { role: "assistant", content }] }
           })
         }
+        if (willBeSecondUserMessage && newConvoId && onConversationTitleGenerated) {
+          fetch(`/api/conversations/${newConvoId}/title`, { method: "POST" })
+            .then((r) => r.json())
+            .then((data: { title: string }) => onConversationTitleGenerated(key, newConvoId!, data.title))
+            .catch(() => {})
+        }
       })
-      .catch(() => {
+      .catch((err) => {
+        const isNetwork = err instanceof TypeError && (err.message?.includes("fetch") ?? true)
+        const msg = isNetwork
+          ? "I can't reach the server right now. Check your connection and try again."
+          : "Something went wrong. Please try again."
         setMessagesByKey((prev) => {
           const list = prev[key] || []
           const last = list[list.length - 1]
           if (last?.role === "assistant") {
-            return { ...prev, [key]: [...list.slice(0, -1), { ...last, content: "Network error. Please try again." }] }
+            return { ...prev, [key]: [...list.slice(0, -1), { ...last, content: msg }] }
           }
-          return { ...prev, [key]: [...list, { role: "assistant", content: "Network error. Please try again." }] }
+          return { ...prev, [key]: [...list, { role: "assistant", content: msg }] }
         })
       })
       .finally(() => setIsStreaming(false))
-  }, [conversationIds])
+  }, [conversationIds, onConversationTitleGenerated, currentPreferences])
+
+  const loadConversation = useCallback(async (chatKey: string, dbConversationId: string) => {
+    try {
+      const res = await fetch(`/api/conversations/${dbConversationId}`)
+      if (!res.ok) return
+      const data = await res.json()
+      const msgs: ChatMessage[] = (data.messages || []).map((m: { role: string; content: string }) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }))
+      setMessagesByKey((prev) => ({ ...prev, [chatKey]: msgs }))
+      setConversationIds((prev) => ({ ...prev, [chatKey]: dbConversationId }))
+    } catch {
+      // ignore
+    }
+  }, [])
 
   const clearPendingMessage = useCallback(() => {
     if (onClearPendingMessage) onClearPendingMessage()
@@ -131,6 +186,7 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
   const value: ChatContextValue = {
     messagesByKey,
     sendMessage,
+    loadConversation,
     inputValue,
     setInputValue,
     pendingMessage,

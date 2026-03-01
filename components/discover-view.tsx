@@ -1,11 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Sparkles, ChevronRight, Link2, Lightbulb, Compass, ListChecks, Hash, Check, MessageCircle } from "lucide-react"
 import { SectionLabel } from "@/components/shared/section-label"
 import { KEY_INSIGHTS, TOPICS, RECOMMENDATIONS, PREFERENCES, EXPLORE_NEXT } from "@/lib/mock-data"
 import { PREFERENCE_STATUS } from "@/lib/theme-colors"
+import { useCurrentConversation } from "@/lib/contexts/current-conversation-context"
 import { cn } from "@/lib/utils"
+
+interface InsightsData {
+  keyInsights: string[]
+  topics: string[]
+  recommendations: string[]
+  exploreNext: string[]
+}
 
 function StatusDot({ status, size = "sm" }: { status: string; size?: "sm" | "md" }) {
   const colors: Record<string, string> = {
@@ -31,9 +39,35 @@ interface DiscoverViewProps {
   onSendToChat?: (text: string) => void
 }
 
+const FIELD_LABELS: Record<string, string> = {
+  roomType: "Room type",
+  style: "Design style",
+  budget: "Budget",
+  color: "Color",
+  furniture: "Furniture",
+}
+
 export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
-  const [expanded, setExpanded] = useState<string | null>("minimalist")
+  const { conversationId } = useCurrentConversation()
+  const [insights, setInsights] = useState<InsightsData | null>(null)
+  const [prefs, setPrefs] = useState<{ field: string; value: string; confidence: number; status: string }[]>([])
+  const [expanded, setExpanded] = useState<string | null>(null)
   const [checkedRecommendations, setCheckedRecommendations] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    if (!conversationId) {
+      setInsights(null)
+      setPrefs([])
+      return
+    }
+    Promise.all([
+      fetch(`/api/conversations/${conversationId}/insights`).then((r) => r.json()),
+      fetch(`/api/conversations/${conversationId}/preferences`).then((r) => r.json()),
+    ]).then(([ins, prefsList]) => {
+      setInsights(ins)
+      setPrefs(prefsList)
+    }).catch(() => {})
+  }, [conversationId])
 
   const toggleRecommendation = (id: string) => {
     setCheckedRecommendations((prev) => {
@@ -75,7 +109,7 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
             </SectionLabel>
           </div>
           <ul className="flex flex-col gap-2">
-            {KEY_INSIGHTS.map((insight, i) => (
+            {(insights?.keyInsights?.length ? insights.keyInsights : KEY_INSIGHTS).map((insight, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-foreground">
                 <span className="rounded-full bg-primary w-1.5 h-1.5 flex-shrink-0 mt-1.5" />
                 <span className="leading-relaxed">{insight}</span>
@@ -92,7 +126,7 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
             </SectionLabel>
           </div>
           <div className="flex gap-2 flex-wrap">
-            {TOPICS.map((topic, i) => (
+            {(insights?.topics?.length ? insights.topics : TOPICS).map((topic, i) => (
               <span
                 key={i}
                 className="text-xs font-medium px-3 py-1 rounded-full border border-primary/20 bg-primary/10 text-primary"
@@ -111,7 +145,7 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
             </SectionLabel>
           </div>
           <ul className="flex flex-col gap-2">
-            {RECOMMENDATIONS.map(({ id, label }) => {
+            {(insights?.recommendations?.length ? insights.recommendations.map((label, i) => ({ id: `rec-${i}`, label })) : RECOMMENDATIONS).map(({ id, label }) => {
               const checked = checkedRecommendations.has(id)
               return (
                 <div
@@ -168,8 +202,8 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
       </div>
 
       <div className="flex flex-col gap-4">
-        {PREFERENCES.map((pref) => {
-          const t = typeStyles[pref.type]
+        {(prefs.length ? prefs.map((p) => ({ id: p.field, label: FIELD_LABELS[p.field] ?? p.field, type: p.field, confidence: p.confidence, status: p.status, connections: [] as string[], suggestions: [] as { text: string; type: string }[] })) : PREFERENCES).map((pref) => {
+          const t = typeStyles[pref.type] ?? typeStyles.style
           const isExp = expanded === pref.id
           return (
             <div
@@ -210,7 +244,7 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
                     <StatusDot status={pref.status} />
                   </div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">
-                    {pref.confidence}% · {pref.connections.length} connections
+                    {Math.round((pref.confidence ?? 0) * 100)}% · {(pref.connections?.length ?? 0)} connections
                   </div>
                 </div>
                 <ChevronRight
@@ -221,26 +255,28 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
                 />
               </button>
 
-              {isExp && (
+              {isExp && pref.suggestions?.length > 0 && (
                 <div className="px-5 pb-5 flex flex-col gap-5 animate-in slide-in-from-top-2 duration-200">
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
-                      <SectionLabel>
-                        Connected to
-                      </SectionLabel>
+                  {pref.connections?.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
+                        <SectionLabel>
+                          Connected to
+                        </SectionLabel>
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
+                        {pref.connections.map((c, i) => (
+                          <span
+                            key={i}
+                            className="text-xs font-medium px-3 py-1 rounded-full border border-primary/20 bg-primary/10 text-primary"
+                          >
+                            {c}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex gap-2 flex-wrap">
-                      {pref.connections.map((c, i) => (
-                        <span
-                          key={i}
-                          className="text-xs font-medium px-3 py-1 rounded-full border border-primary/20 bg-primary/10 text-primary"
-                        >
-                          {c}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                  )}
 
                   <div>
                     <div className="flex items-center gap-2 mb-3">
@@ -251,7 +287,7 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
                     </div>
                     <div className="flex flex-col gap-2">
                       {pref.suggestions.map((s, i) => {
-                        const sx = suggestionStyles[s.type]
+                        const sx = suggestionStyles[s.type] ?? suggestionStyles.idea
                         return (
                           <button
                             type="button"
@@ -289,7 +325,7 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
               What to explore next
             </span>
           </div>
-          {EXPLORE_NEXT.map((s, i) => (
+          {(insights?.exploreNext?.length ? insights.exploreNext : EXPLORE_NEXT).map((s, i) => (
             <button
               type="button"
               key={i}

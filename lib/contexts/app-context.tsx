@@ -9,6 +9,7 @@ interface AppContextValue {
   recents: RecentItem[]
   addRecent: (item: RecentItem) => void
   onItemClick: (id: string, label: string) => void
+  onConversationTitleGenerated?: (oldRecentId: string, convoId: string, title: string) => void
 }
 
 const AppContext = createContext<AppContextValue | null>(null)

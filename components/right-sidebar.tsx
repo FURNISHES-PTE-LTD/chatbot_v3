@@ -2,7 +2,9 @@
 
 import { IconButton } from "@/components/shared/icon-button"
 import { useWorkspaceContext } from "@/lib/contexts/workspace-context"
-import { useState } from "react"
+import { useCurrentConversation } from "@/lib/contexts/current-conversation-context"
+import { useCurrentPreferences } from "@/lib/contexts/current-preferences-context"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { RefreshCw, Lightbulb, Home, DollarSign, Star, ListChecks } from "lucide-react"
@@ -77,13 +79,96 @@ const STYLE_OPTIONS = ["modern", "traditional", "minimalist", "scandinavian", "i
 const COLOR_OPTIONS = ["blue", "green", "neutral", "warm tones", "cool tones"]
 const FURNITURE_OPTIONS = ["sofa", "bed", "dining table", "coffee table", "lighting"]
 
-export function RightSidebar() {
+const FIELD_TO_KEY: Record<string, string> = {
+  roomType: "roomType",
+  style: "designStyle",
+  budget: "budget",
+  color: "colorPref",
+  furniture: "furnitureNeeds",
+}
+const KEY_TO_FIELD: Record<string, string> = {
+  roomType: "roomType",
+  designStyle: "style",
+  budget: "budget",
+  colorPref: "color",
+  furnitureNeeds: "furniture",
+}
+
+interface RightSidebarProps {
+  onSendToChat?: (text: string) => void
+}
+
+export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
   const { selectedAssistant, setShowAssistantPicker } = useWorkspaceContext()
-  const [roomType, setRoomType] = useState<string | null>("kitchen")
+  const { conversationId } = useCurrentConversation()
+  const { preferences, setPreferences } = useCurrentPreferences()
+  const [brainstormLoading, setBrainstormLoading] = useState(false)
+
+  const [roomType, setRoomType] = useState<string | null>(null)
   const [budget, setBudget] = useState<string | null>(null)
   const [designStyle, setDesignStyle] = useState<string | null>(null)
   const [colorPref, setColorPref] = useState<string | null>(null)
   const [furnitureNeeds, setFurnitureNeeds] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!conversationId) {
+      setRoomType(null)
+      setBudget(null)
+      setDesignStyle(null)
+      setColorPref(null)
+      setFurnitureNeeds(null)
+      setPreferences({})
+      return
+    }
+    fetch(`/api/conversations/${conversationId}/preferences`)
+      .then((res) => res.json())
+      .then((prefs: { field: string; value: string }[]) => {
+        const map: Record<string, string> = {}
+        const keyToVal: Record<string, string | null> = {
+          roomType: null,
+          budget: null,
+          designStyle: null,
+          colorPref: null,
+          furnitureNeeds: null,
+        }
+        prefs.forEach((p) => {
+          map[p.field] = p.value
+          const key = FIELD_TO_KEY[p.field]
+          if (key) keyToVal[key] = p.value
+        })
+        setPreferences(map)
+        setRoomType(keyToVal.roomType ?? null)
+        setBudget(keyToVal.budget ?? null)
+        setDesignStyle(keyToVal.designStyle ?? null)
+        setColorPref(keyToVal.colorPref ?? null)
+        setFurnitureNeeds(keyToVal.furnitureNeeds ?? null)
+      })
+      .catch(() => {})
+  }, [conversationId, setPreferences])
+
+  const handlePreferenceChange = async (key: string, value: string | null) => {
+    const field = KEY_TO_FIELD[key]
+    if (key === "roomType") setRoomType(value)
+    else if (key === "budget") setBudget(value)
+    else if (key === "designStyle") setDesignStyle(value)
+    else if (key === "colorPref") setColorPref(value)
+    else if (key === "furnitureNeeds") setFurnitureNeeds(value)
+    const next = { ...preferences }
+    if (value) {
+      next[field] = value
+      setPreferences(next)
+      if (conversationId) {
+        await fetch(`/api/conversations/${conversationId}/preferences`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ field, value }),
+        })
+      }
+    } else {
+      delete next[field]
+      setPreferences(next)
+    }
+  }
 
   return (
     <aside className="shrink-0 flex flex-col bg-card border border-border h-full w-64" aria-label="Preferences panel">
@@ -104,10 +189,32 @@ export function RightSidebar() {
           <div className="space-y-3">
             {/* Brainstorm card */}
             <div className="animate-in fade-in slide-in-from-right-2 duration-200 rounded border border-border bg-muted/30 p-3">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 mb-2">
                 <Lightbulb className="h-3.5 w-3.5 text-primary shrink-0" />
                 <h4 className="text-xs font-medium text-muted-foreground">Brainstorm for me!!</h4>
               </div>
+              <button
+                type="button"
+                disabled={!conversationId || brainstormLoading}
+                onClick={async () => {
+                  if (!conversationId || !onSendToChat) return
+                  setBrainstormLoading(true)
+                  try {
+                    const res = await fetch("/api/brainstorm", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ conversationId, preferences }),
+                    })
+                    const data = await res.json()
+                    if (data.summary) onSendToChat(data.summary)
+                  } finally {
+                    setBrainstormLoading(false)
+                  }
+                }}
+                className="w-full text-xs font-medium text-primary hover:bg-primary/10 rounded-md py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {brainstormLoading ? "Thinking…" : "Generate ideas"}
+              </button>
             </div>
 
             <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60 px-0.5 pb-0.5 pt-1">
@@ -121,7 +228,7 @@ export function RightSidebar() {
               current={roomType}
               options={ROOM_OPTIONS}
               value={roomType}
-              onChange={setRoomType}
+              onChange={(v) => handlePreferenceChange("roomType", v)}
               borderOnTabs
               useMutedBackground
             />
@@ -133,7 +240,7 @@ export function RightSidebar() {
               current={budget}
               options={BUDGET_OPTIONS}
               value={budget}
-              onChange={setBudget}
+              onChange={(v) => handlePreferenceChange("budget", v)}
               borderOnTabs
             />
             <PreferenceCard
@@ -144,7 +251,7 @@ export function RightSidebar() {
               current={designStyle}
               options={STYLE_OPTIONS}
               value={designStyle}
-              onChange={setDesignStyle}
+              onChange={(v) => handlePreferenceChange("designStyle", v)}
               borderOnTabs
             />
             <PreferenceCard
@@ -155,7 +262,7 @@ export function RightSidebar() {
               current={colorPref}
               options={COLOR_OPTIONS}
               value={colorPref}
-              onChange={setColorPref}
+              onChange={(v) => handlePreferenceChange("colorPref", v)}
               borderOnTabs
             />
             <PreferenceCard
@@ -166,7 +273,7 @@ export function RightSidebar() {
               current={furnitureNeeds}
               options={FURNITURE_OPTIONS}
               value={furnitureNeeds}
-              onChange={setFurnitureNeeds}
+              onChange={(v) => handlePreferenceChange("furnitureNeeds", v)}
               borderOnTabs
             />
           </div>

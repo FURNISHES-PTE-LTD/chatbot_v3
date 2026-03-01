@@ -18,7 +18,6 @@ import {
 } from "lucide-react"
 import { useAppContext } from "@/lib/contexts/app-context"
 import { useWorkspaceContext } from "@/lib/contexts/workspace-context"
-import { ChatProvider } from "@/lib/contexts/chat-context"
 import type { Workspace } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { FilesView } from "./files-view"
@@ -36,16 +35,12 @@ import { useState, useEffect } from "react"
 
 interface MainContentProps {
   workspaceListKey?: number
-  pendingChatMessage?: string | null
-  onClearPendingChatMessage?: () => void
   onEditInChatFromFiles?: (title: string) => void
   onSendToChatFromDiscover?: (text: string) => void
 }
 
 export function MainContent({
   workspaceListKey = 0,
-  pendingChatMessage = null,
-  onClearPendingChatMessage,
   onEditInChatFromFiles,
   onSendToChatFromDiscover,
 }: MainContentProps) {
@@ -64,7 +59,7 @@ export function MainContent({
     setSelectedWorkspaceForView(null)
   }, [workspaceListKey])
 
-  const isChatView = activeItem === "new-chat" || activeItem.startsWith("recent-")
+  const isChatView = activeItem === "new-chat" || activeItem.startsWith("recent-") || activeItem.startsWith("convo-")
 
   const getActiveIcon = () => {
     const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -83,7 +78,7 @@ export function MainContent({
     const IconComponent =
       currentWorkspace && currentProject
         ? LayoutDashboard
-        : activeItem.startsWith("recent-")
+        : activeItem.startsWith("recent-") || activeItem.startsWith("convo-")
           ? Clock
           : iconMap[activeItem] || Package
     return <IconComponent className="h-3.5 w-3.5 text-muted-foreground" />
@@ -93,7 +88,7 @@ export function MainContent({
     if (currentWorkspace && currentProject) {
       return `${currentWorkspace.name} / ${currentProject.name}`
     }
-    if (activeItem.startsWith("recent-") && recents.length > 0) {
+    if ((activeItem.startsWith("recent-") || activeItem.startsWith("convo-")) && recents.length > 0) {
       const found = recents.find((r) => r.id === activeItem)
       if (found) return found.label
     }
@@ -170,11 +165,7 @@ export function MainContent({
   }
 
   return (
-    <ChatProvider
-      pendingMessage={pendingChatMessage}
-      onClearPendingMessage={onClearPendingChatMessage}
-    >
-      <div data-tutorial="main-content" className="h-full overflow-hidden flex flex-col">
+    <div data-tutorial="main-content" className="h-full overflow-hidden flex flex-col">
         {showAssistantPicker ? (
           <AssistantPickerView />
         ) : (
@@ -293,6 +284,5 @@ export function MainContent({
           </>
         )}
       </div>
-    </ChatProvider>
   )
 }

@@ -39,6 +39,7 @@ export interface RecentItem {
 export interface ChatMessage {
   role: "user" | "assistant"
   content: string
+  extractions?: { text: string; field: string; confidence: number }[]
 }
 
 export interface FileItem {

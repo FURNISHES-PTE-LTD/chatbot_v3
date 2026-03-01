@@ -3,28 +3,41 @@
 import { DEMO_RECENT_ID } from "@/lib/constants"
 import { AppProvider } from "@/lib/contexts/app-context"
 import { WorkspaceProvider, useWorkspaceContext } from "@/lib/contexts/workspace-context"
+import { CurrentConversationProvider } from "@/lib/contexts/current-conversation-context"
+import { CurrentPreferencesProvider } from "@/lib/contexts/current-preferences-context"
+import { ChatProvider } from "@/lib/contexts/chat-context"
+import { ErrorBoundary } from "@/components/error-boundary"
 import type { RecentItem } from "@/lib/types"
 import { LeftSidebar } from "./left-sidebar"
 import { RightSidebar } from "./right-sidebar"
 import { MainContent } from "./main-content"
 import { Navbar } from "./navbar"
 import { TutorialGuide } from "./tutorial-guide"
-import { useState } from "react"
-
-const INITIAL_RECENTS: RecentItem[] = [
-  { id: DEMO_RECENT_ID, label: "Design brief demo" },
-  { id: "recent-living-room", label: "Living Room Redesign" },
-  { id: "recent-sofa-ideas", label: "Sofa ideas & layout" },
-  { id: "recent-color-palette", label: "Color palette exploration" },
-]
+import { useState, useEffect } from "react"
 
 function DashboardLayoutInner() {
-  const [activeItem, setActiveItem] = useState("recent-living-room")
+  const [activeItem, setActiveItem] = useState(DEMO_RECENT_ID)
   const [isTutorialOpen, setIsTutorialOpen] = useState(false)
   const [workspaceListKey, setWorkspaceListKey] = useState(0)
-  const [recents, setRecents] = useState<RecentItem[]>(INITIAL_RECENTS)
+  const [recents, setRecents] = useState<RecentItem[]>([{ id: DEMO_RECENT_ID, label: "Design brief demo" }])
   const [pendingChatMessage, setPendingChatMessage] = useState<string | null>(null)
   const { setShowAssistantPicker } = useWorkspaceContext()
+
+  useEffect(() => {
+    fetch("/api/conversations")
+      .then((res) => res.json())
+      .then((convos: { id: string; title: string }[]) => {
+        const apiRecents: RecentItem[] = convos.map((c) => ({
+          id: `convo-${c.id}`,
+          label: c.title,
+        }))
+        setRecents((prev) => {
+          const keepDemo = prev.filter((r) => r.id === DEMO_RECENT_ID)
+          return [...keepDemo, ...apiRecents]
+        })
+      })
+      .catch(console.error)
+  }, [])
 
   const handleItemClick = (id: string, label: string) => {
     let itemId = id
@@ -51,51 +64,84 @@ function DashboardLayoutInner() {
     setIsTutorialOpen(true)
   }
 
+  const onConversationTitleGenerated = (oldRecentId: string, convoId: string, title: string) => {
+    const newId = `convo-${convoId}`
+    setRecents((prev) =>
+      prev.map((r) => (r.id === oldRecentId ? { id: newId, label: title } : r)),
+    )
+    if (activeItem === oldRecentId) setActiveItem(newId)
+  }
+
   const appContextValue = {
     activeItem,
     setActiveItem,
     recents,
     addRecent: (item: RecentItem) => setRecents((prev) => [item, ...prev]),
     onItemClick: handleItemClick,
+    onConversationTitleGenerated,
   }
 
   return (
     <AppProvider value={appContextValue}>
-      <div className="flex flex-col h-screen w-full overflow-hidden bg-muted">
-        <Navbar onFurnishesClick={handleFurnishesClick} />
+      <CurrentConversationProvider>
+        <CurrentPreferencesProvider>
+          <ChatProvider
+            pendingMessage={pendingChatMessage}
+            setPendingMessage={setPendingChatMessage}
+            onClearPendingMessage={() => setPendingChatMessage(null)}
+            onConversationTitleGenerated={onConversationTitleGenerated}
+          >
+            <ErrorBoundary>
+            <div className="flex flex-col h-screen w-full overflow-hidden bg-muted">
+              <Navbar onFurnishesClick={handleFurnishesClick} />
 
-      <div className="flex flex-1 overflow-hidden p-2 gap-2 px-4">
-        <div className="overflow-hidden h-full">
-          <LeftSidebar onHelpClick={handleHelpClick} />
-        </div>
+              <div className="flex flex-1 overflow-hidden p-2 gap-2 px-4">
+                <div className="overflow-hidden h-full">
+                  <LeftSidebar onHelpClick={handleHelpClick} />
+                </div>
 
-        <div className="flex-1 bg-card overflow-hidden border border-border transition-all duration-200">
-          <MainContent
-            workspaceListKey={workspaceListKey}
-            pendingChatMessage={pendingChatMessage}
-            onClearPendingChatMessage={() => setPendingChatMessage(null)}
-            onEditInChatFromFiles={(title) => {
-              setPendingChatMessage(`Can you adjust the ${title}?`)
-              const newId = `recent-${Date.now()}`
-              setRecents((prev) => [{ id: newId, label: "New Chat" }, ...prev])
-              setActiveItem(newId)
-            }}
-            onSendToChatFromDiscover={(text) => {
-              setPendingChatMessage(text)
-              const newId = `recent-${Date.now()}`
-              setRecents((prev) => [{ id: newId, label: "New Chat" }, ...prev])
-              setActiveItem(newId)
-            }}
-          />
-        </div>
+                <div className="flex-1 bg-card overflow-hidden border border-border transition-all duration-200">
+                  <MainContent
+                    workspaceListKey={workspaceListKey}
+                    onEditInChatFromFiles={(title) => {
+                      setPendingChatMessage(`Can you adjust the ${title}?`)
+                      const newId = `recent-${Date.now()}`
+                      setRecents((prev) => [{ id: newId, label: "New Chat" }, ...prev])
+                      setActiveItem(newId)
+                    }}
+                    onSendToChatFromDiscover={(text) => {
+                      setPendingChatMessage(text)
+                      const newId = `recent-${Date.now()}`
+                      setRecents((prev) => [{ id: newId, label: "New Chat" }, ...prev])
+                      setActiveItem(newId)
+                    }}
+                  />
+                </div>
 
-        <div className="overflow-hidden h-full">
-          <RightSidebar />
-        </div>
-      </div>
+                <div className="overflow-hidden h-full">
+                  <RightSidebar
+                    onSendToChat={(text) => {
+                      setPendingChatMessage(text)
+                      const isChat =
+                        activeItem === "new-chat" ||
+                        activeItem.startsWith("recent-") ||
+                        activeItem.startsWith("convo-")
+                      if (!isChat) {
+                        const newId = `recent-${Date.now()}`
+                        setRecents((prev) => [{ id: newId, label: "New Chat" }, ...prev])
+                        setActiveItem(newId)
+                      }
+                    }}
+                  />
+                </div>
+              </div>
 
-      <TutorialGuide isOpen={isTutorialOpen} onClose={() => setIsTutorialOpen(false)} />
-      </div>
+              <TutorialGuide isOpen={isTutorialOpen} onClose={() => setIsTutorialOpen(false)} />
+            </div>
+            </ErrorBoundary>
+          </ChatProvider>
+        </CurrentPreferencesProvider>
+      </CurrentConversationProvider>
     </AppProvider>
   )
 }

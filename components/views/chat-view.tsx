@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { MessageSquarePlus, Send, Paperclip, Lightbulb, Check, Bookmark, Edit3, Home, Briefcase, Moon, Sun } from "lucide-react"
 import { DEMO_RECENT_ID } from "@/lib/constants"
 import { MOCK_DEMO_MESSAGES, CHAT_SUGGESTION_CARDS } from "@/lib/mock-data"
 import type { DemoMessage } from "@/lib/mock-data"
 import { useAppContext } from "@/lib/contexts/app-context"
 import { useChatContext } from "@/lib/contexts/chat-context"
+import { useCurrentConversation } from "@/lib/contexts/current-conversation-context"
 import { parseHighlightedContent } from "@/lib/parse-highlights"
 import type { Workspace, Project } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -30,29 +31,69 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
   const {
     messagesByKey,
     sendMessage,
+    loadConversation,
     inputValue,
     setInputValue,
     pendingMessage,
     clearPendingMessage,
     isStreaming,
+    conversationIds,
   } = useChatContext()
+  const { setConversationId } = useCurrentConversation()
 
   const chatKey =
     currentWorkspace && currentProject
       ? `${currentWorkspace.id}-${currentProject.id}`
-      : activeItem.startsWith("recent-")
+      : activeItem.startsWith("recent-") || activeItem.startsWith("convo-")
         ? activeItem
         : "default"
   const chatMessages = messagesByKey[chatKey] || []
   const isDemoChat = activeItem === DEMO_RECENT_ID
   const messagesToShow = isDemoChat ? MOCK_DEMO_MESSAGES : chatMessages
+  const currentConvoId = conversationIds[chatKey] ?? (chatKey.startsWith("convo-") ? chatKey.replace("convo-", "") : null)
+  const [suggestions, setSuggestions] = useState<string[]>([
+    "Mood image",
+    "Floorplan",
+    "Color palette",
+    "Cozy living room",
+    "Small bedroom",
+    "Minimalist tips",
+    "Lighting ideas",
+  ])
 
   useEffect(() => {
-    if ((activeItem === "new-chat" || activeItem.startsWith("recent-")) && pendingMessage) {
+    if ((activeItem === "new-chat" || activeItem.startsWith("recent-") || activeItem.startsWith("convo-")) && pendingMessage) {
       setInputValue(pendingMessage)
       clearPendingMessage()
     }
   }, [pendingMessage, activeItem, setInputValue, clearPendingMessage])
+
+  useEffect(() => {
+    if (chatKey.startsWith("convo-") && chatMessages.length === 0) {
+      const dbId = chatKey.replace("convo-", "")
+      loadConversation(chatKey, dbId)
+    }
+  }, [chatKey, chatMessages.length, loadConversation])
+
+  useEffect(() => {
+    const id =
+      conversationIds[chatKey] ??
+      (chatKey.startsWith("convo-") ? chatKey.replace("convo-", "") : null)
+    setConversationId(id)
+  }, [chatKey, conversationIds, setConversationId])
+
+  useEffect(() => {
+    if (currentConvoId && chatMessages.length > 2) {
+      fetch("/api/suggestions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId: currentConvoId }),
+      })
+        .then((r) => r.json())
+        .then((data: { suggestions?: string[] }) => data.suggestions?.length && setSuggestions(data.suggestions))
+        .catch(() => {})
+    }
+  }, [currentConvoId, chatMessages.length])
 
   const handleSendChatMessage = () => {
     if (!inputValue.trim()) return
@@ -165,15 +206,23 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                       <Check className="w-3 h-3 text-orange-500" /> <span className="text-orange-600 font-normal">Captured:</span> {demoMsg.extraction.value}
                     </div>
                   )}
-                  {isUser && demoMsg.sources && demoMsg.sources.length > 0 && (
+                  {isUser && (msg.extractions?.length ? (
                     <div className="flex gap-1 flex-wrap justify-end">
-                      {demoMsg.sources.map((s, j) => (
+                      {msg.extractions.map((e, j) => (
+                        <span key={j} className="text-[10px] text-primary bg-primary/5 rounded px-1.5 py-0.5 font-medium border border-primary/10">
+                          ↗ {e.text}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (demoMsg as DemoMessage).sources?.length ? (
+                    <div className="flex gap-1 flex-wrap justify-end">
+                      {(demoMsg as DemoMessage).sources!.map((s, j) => (
                         <span key={j} className="text-[10px] text-primary bg-primary/5 rounded px-1.5 py-0.5 font-medium border border-primary/10">
                           ↗ {s.text}
                         </span>
                       ))}
                     </div>
-                  )}
+                  ) : null)}
                 </div>
               </div>
             )
@@ -197,15 +246,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
           <span className="text-foreground">for your project:</span>
         </p>
         <div className="flex flex-wrap gap-2">
-          {[
-            "Mood image",
-            "Floorplan",
-            "Color palette",
-            "Cozy living room",
-            "Small bedroom",
-            "Minimalist tips",
-            "Lighting ideas",
-          ].map((label) => (
+          {suggestions.map((label) => (
             <button
               type="button"
               key={label}

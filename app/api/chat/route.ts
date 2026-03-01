@@ -2,6 +2,9 @@ import { streamText } from "ai"
 import { openai } from "@ai-sdk/openai"
 import { prisma } from "@/lib/db"
 import { z } from "zod"
+import { validateInput, buildSafeSystemPrompt } from "@/lib/guardrails"
+import { checkRateLimit } from "@/lib/rate-limit"
+import { log } from "@/lib/logger"
 
 const RequestSchema = z.object({
   conversationId: z.string().optional(),
@@ -10,6 +13,12 @@ const RequestSchema = z.object({
 })
 
 export async function POST(req: Request) {
+  const start = Date.now()
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous"
+  if (!checkRateLimit(clientIp)) {
+    return Response.json({ error: "Too many requests. Please slow down." }, { status: 429 })
+  }
+
   if (!process.env.OPENAI_API_KEY) {
     return Response.json(
       { error: "OPENAI_API_KEY is not set. Add it to .env.local to enable chat." },
@@ -24,6 +33,10 @@ export async function POST(req: Request) {
   }
 
   const { conversationId, message, preferences } = parsed.data
+  const validation = validateInput(message)
+  if (!validation.valid) {
+    return Response.json({ error: validation.reason }, { status: 400 })
+  }
 
   let convoId = conversationId
   if (!convoId) {
@@ -48,7 +61,7 @@ export async function POST(req: Request) {
         .join(", ")
     : "none gathered yet"
 
-  const systemPrompt = `You are Eva, a friendly interior design assistant. You help users plan room designs, choose furniture, select color palettes, and create design briefs.
+  const basePrompt = `You are Eva, a friendly interior design assistant. You help users plan room designs, choose furniture, select color palettes, and create design briefs.
 
 Current user preferences: ${prefContext}
 
@@ -58,6 +71,7 @@ Guidelines:
 - Suggest concrete options when possible (specific furniture styles, color combinations, layout ideas)
 - Ask clarifying follow-up questions to refine their design brief
 - Keep responses under 150 words unless the user asks for detail`
+  const systemPrompt = buildSafeSystemPrompt(basePrompt)
 
   const result = streamText({
     model: openai("gpt-4o-mini"),
@@ -71,6 +85,12 @@ Guidelines:
   result.text.then(async (fullText) => {
     await prisma.message.create({
       data: { conversationId: convoId!, role: "assistant", content: fullText },
+    })
+    log({
+      level: "info",
+      event: "chat_response",
+      conversationId: convoId,
+      latencyMs: Date.now() - start,
     })
   })
 
