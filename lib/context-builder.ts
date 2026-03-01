@@ -3,7 +3,7 @@
  * Ported from V2 conversation.py.
  */
 import { messagesToTranscript } from "@/lib/api-helpers"
-import { getOpenAIKey } from "@/lib/openai"
+import { getOpenAIKey, OPENAI_PRIMARY_MODEL } from "@/lib/openai"
 
 const CHARS_PER_TOKEN = 4
 
@@ -39,7 +39,7 @@ async function summarizeMessages(messages: MessageForContext[]): Promise<string>
         Authorization: `Bearer ${key}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: OPENAI_PRIMARY_MODEL,
         messages: [
           {
             role: "user",

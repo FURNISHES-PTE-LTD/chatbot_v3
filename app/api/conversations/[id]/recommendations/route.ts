@@ -5,7 +5,13 @@
 import { prisma } from "@/lib/db"
 import { getDomainConfig } from "@/lib/domain-config"
 import { getPreferencesAsRecord } from "@/lib/api-helpers"
-import { getOpenAIKey, requireOpenAIKey } from "@/lib/openai"
+import {
+  getOpenAIKey,
+  requireOpenAIKey,
+  withFallback,
+  OPENAI_PRIMARY_MODEL,
+  OPENAI_FALLBACK_MODEL,
+} from "@/lib/openai"
 
 export async function GET(
   _req: Request,
@@ -28,18 +34,7 @@ export async function GET(
     const prefsStr = Object.keys(preferences).length
       ? JSON.stringify(preferences, null, 0)
       : "No preferences yet."
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${requireOpenAIKey()}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "user",
-            content: `Based on these user preferences, suggest concrete items and a budget breakdown.
+    const prompt = `Based on these user preferences, suggest concrete items and a budget breakdown.
 Preferences:
 ${prefsStr}
 
@@ -47,13 +42,25 @@ Respond with a single JSON object with exactly these keys:
 - "items": array of objects, each with "name", "category", "why_it_fits" (short sentence), "estimated_price" (number or null). Max ${maxItems} items.
 - "suggestions": array of short strings (design or product suggestions).
 - "budget_breakdown": object with category keys and numeric "amount" or "range" (e.g. "100-200") and optional "notes".
-Output only valid JSON, no markdown.`,
-          },
-        ],
-        temperature: 0.3,
-        max_tokens: 1500,
-      }),
-    })
+Output only valid JSON, no markdown.`
+    const call = (model: string) =>
+      fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${requireOpenAIKey()}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.3,
+          max_tokens: 1500,
+        }),
+      })
+    const res = await withFallback(
+      () => call(OPENAI_PRIMARY_MODEL),
+      () => call(OPENAI_FALLBACK_MODEL)
+    )
     if (!res.ok) return Response.json({ items: [], suggestions: [], budget_breakdown: {} })
     const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
     let content = (data.choices?.[0]?.message?.content ?? "").trim()
