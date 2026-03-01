@@ -1,6 +1,12 @@
 "use client"
 
-import { DEMO_RECENT_ID } from "@/lib/constants"
+import {
+  DEMO_RECENT_ID,
+  DEFAULT_WORKSPACE,
+  DEFAULT_PROJECT,
+  DEFAULT_ASSISTANT,
+} from "@/lib/constants"
+import type { RecentItem, Workspace, Project, Assistant } from "@/lib/types"
 import { LeftSidebar } from "./left-sidebar"
 import { RightSidebar } from "./right-sidebar"
 import { MainContent } from "./main-content"
@@ -8,10 +14,7 @@ import { Navbar } from "./navbar"
 import { TutorialGuide } from "./tutorial-guide"
 import { useState } from "react"
 
-const DEFAULT_WORKSPACE = { id: "ws-1", name: "Home Renovation" }
-const DEFAULT_PROJECT = { id: "proj-1a", name: "Living Room" }
-
-const INITIAL_RECENTS: { id: string; label: string }[] = [
+const INITIAL_RECENTS: RecentItem[] = [
   { id: DEMO_RECENT_ID, label: "Design brief demo" },
   { id: "recent-living-room", label: "Living Room Redesign" },
   { id: "recent-sofa-ideas", label: "Sofa ideas & layout" },
@@ -26,19 +29,15 @@ export function DashboardLayout() {
   ])
   const [activeTabId, setActiveTabId] = useState("tab-1")
   const [isTutorialOpen, setIsTutorialOpen] = useState(false)
-  const [currentWorkspace, setCurrentWorkspace] = useState<{ id: string; name: string } | null>(DEFAULT_WORKSPACE)
-  const [currentProject, setCurrentProject] = useState<{ id: string; name: string } | null>(DEFAULT_PROJECT)
+  const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(DEFAULT_WORKSPACE)
+  const [currentProject, setCurrentProject] = useState<Project | null>(DEFAULT_PROJECT)
   const [showAssistantPicker, setShowAssistantPicker] = useState(false)
   const [workspaceListKey, setWorkspaceListKey] = useState(0)
-  const [selectedAssistant, setSelectedAssistant] = useState<{ id: string; name: string; tagline: string }>({
-    id: "eva",
-    name: "Eva",
-    tagline: "[the Assistant]",
-  })
-  const [recents, setRecents] = useState<{ id: string; label: string }[]>(INITIAL_RECENTS)
+  const [selectedAssistant, setSelectedAssistant] = useState<Assistant>(DEFAULT_ASSISTANT)
+  const [recents, setRecents] = useState<RecentItem[]>(INITIAL_RECENTS)
   const [pendingChatMessage, setPendingChatMessage] = useState<string | null>(null)
 
-  const handleSelectWorkspaceProject = (workspace: { id: string; name: string }, project: { id: string; name: string }) => {
+  const handleSelectWorkspaceProject = (workspace: Workspace, project: Project) => {
     setCurrentWorkspace(workspace)
     setCurrentProject(project)
   }
@@ -121,7 +120,7 @@ export function DashboardLayout() {
     setShowAssistantPicker(true)
   }
 
-  const handleSelectAssistant = (assistant: { id: string; name: string; tagline: string }) => {
+  const handleSelectAssistant = (assistant: Assistant) => {
     setSelectedAssistant(assistant)
     setShowAssistantPicker(false)
   }

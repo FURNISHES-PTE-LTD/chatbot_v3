@@ -2,86 +2,15 @@
 
 import { useState } from "react"
 import { Sparkles, ChevronRight, Link2, Lightbulb, Compass, ListChecks, Hash, Check, MessageCircle } from "lucide-react"
+import { KEY_INSIGHTS, TOPICS, RECOMMENDATIONS, PREFERENCES, EXPLORE_NEXT } from "@/lib/mock-data"
+import { PREFERENCE_STATUS } from "@/lib/theme-colors"
 import { cn } from "@/lib/utils"
-
-const KEY_INSIGHTS = [
-  "Modern minimalist style for 400 sq ft space",
-  "South-facing windows - consider UV-resistant fabrics",
-  "Low-profile sectional as main seating anchor",
-  "Warm white and cream base with terracotta accents",
-  "Natural materials: linen, oak, travertine, brass",
-]
-
-const TOPICS = [
-  "Furniture Selection",
-  "Color Palette",
-  "Space Planning",
-  "Materials",
-]
-
-const RECOMMENDATIONS = [
-  { id: "rec-1", label: 'Select sectional dimensions around 95" x 85"' },
-  { id: "rec-2", label: "Choose UV-resistant linen or bouclé" },
-  { id: "rec-3", label: "Add sculptural accent chairs in rust" },
-  { id: "rec-4", label: "Consider floating media console" },
-]
-
-const PREFERENCES = [
-  {
-    id: "minimalist",
-    label: "Minimalist",
-    type: "style",
-    confidence: 92,
-    status: "confirmed",
-    connections: ["Clean lines", "Neutral palettes", "Functional furniture"],
-    suggestions: [
-      { text: "Japandi style — blends minimalist + warm wood", type: "explore" },
-      { text: "Hidden storage solutions", type: "furniture" },
-    ],
-  },
-  {
-    id: "warm",
-    label: "Warm Tones",
-    type: "color",
-    confidence: 72,
-    status: "potential",
-    connections: ["Terracotta", "Sand", "Cream"],
-    suggestions: [
-      { text: "Pair with natural wood furniture", type: "idea" },
-      { text: "Warm LED lighting for evenings", type: "explore" },
-    ],
-  },
-  {
-    id: "sofa",
-    label: "Sofa",
-    type: "furniture",
-    confidence: 96,
-    status: "confirmed",
-    connections: ["L-shape", "Boucle fabric", "Low-profile"],
-    suggestions: [
-      { text: "Modular sofa for layout flexibility", type: "furniture" },
-      { text: "Boucle or linen for warmth", type: "explore" },
-    ],
-  },
-  {
-    id: "cozy",
-    label: "Cozy",
-    type: "vibe",
-    confidence: 68,
-    status: "inferred",
-    connections: ["Soft textures", "Warm lighting", "Layered textiles"],
-    suggestions: [
-      { text: "Floor lamp with warm diffused light", type: "furniture" },
-      { text: "Layer cushions in varied textures", type: "idea" },
-    ],
-  },
-]
 
 function StatusDot({ status, size = "sm" }: { status: string; size?: "sm" | "md" }) {
   const colors: Record<string, string> = {
-    confirmed: "bg-orange-500",
-    potential: "bg-primary",
-    inferred: "bg-violet-500",
+    confirmed: PREFERENCE_STATUS.confirmed,
+    potential: PREFERENCE_STATUS.potential,
+    inferred: PREFERENCE_STATUS.inferred,
   }
   const sizes = { sm: "w-2 h-2", md: "w-2.5 h-2.5" }
   return (
@@ -94,12 +23,6 @@ function StatusDot({ status, size = "sm" }: { status: string; size?: "sm" | "md"
     />
   )
 }
-
-const EXPLORE_NEXT = [
-  "Tell Eva about lighting preferences",
-  "Mention materials you love",
-  "Describe how you use the room day-to-day",
-]
 
 interface DiscoverViewProps {
   onSendToChat?: (text: string) => void

@@ -10,6 +10,8 @@ import {
   GitBranch,
   LayoutDashboard,
 } from "lucide-react"
+import { DEFAULT_RECENTS } from "@/lib/mock-data"
+import type { RecentItem } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
 
@@ -42,15 +44,9 @@ const navigationCategories: { id: string; label: string; items: NavItem[] }[] = 
   },
 ]
 
-const DEFAULT_RECENTS = [
-  { id: "recent-living-room", label: "Living Room Redesign" },
-  { id: "recent-sofa-ideas", label: "Sofa ideas & layout" },
-  { id: "recent-color-palette", label: "Color palette exploration" },
-]
-
 interface LeftSidebarProps {
   activeItem: string
-  recents?: { id: string; label: string }[]
+  recents?: RecentItem[]
   onItemClick: (id: string, label: string) => void
   onHelpClick?: () => void
 }

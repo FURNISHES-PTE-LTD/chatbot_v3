@@ -2,50 +2,12 @@
 
 import { useState } from "react"
 import { RotateCcw, RotateCw, Sparkles, Plus, Check, X, ZoomIn, ZoomOut } from "lucide-react"
+import { INIT_WF_NODES, INIT_WF_EDGES, NODE_TRACES } from "@/lib/mock-data"
+import type { WfNode, WfEdge } from "@/lib/mock-data"
+import { NODE_COLORS, STATUS_COLORS } from "@/lib/theme-colors"
 import { cn } from "@/lib/utils"
 
-// ─── Mock workflow data ─────────────────────────────────────────────────────
 type NodeType = "start" | "process" | "warning" | "end" | "knowledge"
-type WfNode = { id: string; x: number; y: number; w: number; title: string; body: string; type: NodeType; icon: string }
-type WfEdge = { id: string; from: string; to: string; label?: string }
-
-const INIT_WF_NODES: WfNode[] = [
-  { id: "start", x: 340, y: 40, w: 300, title: "START", body: "Say hello to the user. Introduce yourself as Eva, part of the Furnishes design team.", type: "start", icon: "🏠" },
-  { id: "detect", x: 340, y: 210, w: 300, title: "DETECT INTENT", body: "Extract room type, style keywords, and furniture mentions from user input.", type: "process", icon: "🔍" },
-  { id: "collect", x: 160, y: 400, w: 280, title: "COLLECT PREFERENCES", body: "Ask about style, budget, color theme, must-have furniture, and layout preferences.", type: "process", icon: "📋" },
-  { id: "clarify", x: 560, y: 400, w: 280, title: "CLARIFY INTENT", body: "Ask user to confirm or correct the detected room type and preferences.", type: "warning", icon: "❓" },
-  { id: "brief", x: 160, y: 590, w: 280, title: "GENERATE BRIEF", body: "Compile all extracted data into a structured design brief. Show task card.", type: "process", icon: "📄" },
-  { id: "review", x: 340, y: 760, w: 300, title: "REVIEW & CONFIRM", body: "Present the complete brief. Ask for confirmation or adjustments.", type: "end", icon: "✅" },
-  { id: "kb", x: 720, y: 40, w: 260, title: "KNOWLEDGE BASE", body: "Reference product catalog and style guides when user asks questions.", type: "knowledge", icon: "📚" },
-]
-
-const INIT_WF_EDGES: WfEdge[] = [
-  { id: "e1", from: "start", to: "detect" },
-  { id: "e2", from: "detect", to: "collect", label: "USER IS CLEAR" },
-  { id: "e3", from: "detect", to: "clarify", label: "USER IS UNCLEAR" },
-  { id: "e4", from: "clarify", to: "collect", label: "CORRECTED" },
-  { id: "e5", from: "collect", to: "brief", label: "ALL CAPTURED" },
-  { id: "e6", from: "brief", to: "review", label: "BRIEF READY" },
-]
-
-type TraceEntry =
-  | { time: string; text: string; action?: string }
-  | { time: string; userQuote: string; changes?: { field: string; after: string; confidence: number; action: string }[]; reasoning?: string }
-
-const NODE_TRACES: Record<string, { entries: TraceEntry[] }> = {
-  start: { entries: [{ time: "10:12 AM", text: "Eva greeted user and asked about room type.", action: "Sent welcome" }] },
-  detect: { entries: [{ time: "10:13 AM", userQuote: "redoing my living room", changes: [{ field: "Room Type", after: "Living Room", confidence: 95, action: "applied" }], reasoning: "'Living room' matched room dictionary at 95%." }] },
-  collect: {
-    entries: [
-      { time: "10:14 AM", userQuote: "minimalist, warm tones, big comfy sofa", changes: [{ field: "Style", after: "Minimalist", confidence: 92, action: "applied" }, { field: "Color", after: "Warm tones", confidence: 72, action: "potential" }, { field: "Furniture", after: "Sofa", confidence: 96, action: "applied" }], reasoning: "'Minimalist' exact match (92%). 'Warm tones' ambiguous — flagged (72%). 'Sofa' exact match (96%)." },
-      { time: "10:15 AM", userQuote: "Around 4k, nothing farmhouse", changes: [{ field: "Budget", after: "$4,000", confidence: 88, action: "applied" }, { field: "Exclusion", after: "Farmhouse", confidence: 94, action: "applied" }], reasoning: "'4k' → $4,000 via regex (88%). 'Nothing farmhouse' = negation → exclusion (94%)." },
-    ],
-  },
-  clarify: { entries: [] },
-  brief: { entries: [{ time: "10:16 AM", text: "Brief compiled. Task card generated.", action: "Brief ready" }] },
-  review: { entries: [{ time: "10:17 AM", text: "Awaiting user confirmation.", action: "Feedback sent" }] },
-  kb: { entries: [] },
-}
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -84,19 +46,8 @@ export function PlaybookView() {
   const [editingEdge, setEditingEdge] = useState<string | null>(null)
   const [zoom, setZoom] = useState(88)
 
-  const nodeColors: Record<string, { bg: string; border: string; titleBg: string; titleC: string }> = {
-    start: { bg: "#FFFFFF", border: "#E8E4DE", titleBg: "#F5F0EA", titleC: "#1A1A1A" },
-    process: { bg: "#FFFFFF", border: "#E8E4DE", titleBg: "#F5F0EA", titleC: "#1A1A1A" },
-    warning: { bg: "#FFFFFF", border: "#C86F4A", titleBg: "#FEF3EE", titleC: "#C86F4A" },
-    end: { bg: "#FFFFFF", border: "#4A9D6E", titleBg: "#ECFDF5", titleC: "#047857" },
-    knowledge: { bg: "#FFFFFF", border: "#9575CD", titleBg: "#9575CD", titleC: "#FFFFFF" },
-  }
-
-  const actionColors: Record<string, { c: string; bg: string }> = {
-    applied: { c: "#4A9D6E", bg: "#ECFDF5" },
-    potential: { c: "#C86F4A", bg: "#FEF3EE" },
-    inferred: { c: "#9575CD", bg: "#F3E8FF" },
-  }
+  const nodeColors = NODE_COLORS
+  const actionColors = STATUS_COLORS
 
   const updateNodeBody = (id: string, body: string) =>
     setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, body } : n)))

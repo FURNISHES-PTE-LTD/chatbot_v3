@@ -1,7 +1,10 @@
 "use client"
 
 import React from "react"
-import { DEMO_RECENT_ID } from "@/lib/constants"
+import { DEMO_RECENT_ID, AI_RESPONSE_DELAY_MS } from "@/lib/constants"
+import { MOCK_DEMO_MESSAGES, CHAT_SUGGESTION_CARDS, MOCK_WORKSPACES, MOCK_PROJECTS_BY_WORKSPACE } from "@/lib/mock-data"
+import type { ChatMessage, Workspace, Project, Assistant, RecentItem } from "@/lib/types"
+import type { DemoMessage } from "@/lib/mock-data"
 import { cn } from "@/lib/utils"
 import {
   Star,
@@ -42,9 +45,9 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
-export type AssistantStyleFocus = "creative" | "minimal" | "practical"
+type AssistantStyleFocus = "creative" | "minimal" | "practical"
 
-export interface AssistantOption {
+interface AssistantOption {
   id: string
   name: string
   tagline: string
@@ -56,16 +59,16 @@ export interface AssistantOption {
 
 interface MainContentProps {
   activeItem: string
-  recents?: { id: string; label: string }[]
+  recents?: RecentItem[]
   onItemClick?: (id: string, label: string) => void
   workspaceListKey?: number
-  currentWorkspace?: { id: string; name: string } | null
-  currentProject?: { id: string; name: string } | null
-  onSelectWorkspaceProject?: (workspace: { id: string; name: string }, project: { id: string; name: string }) => void
+  currentWorkspace?: Workspace | null
+  currentProject?: Project | null
+  onSelectWorkspaceProject?: (workspace: Workspace, project: Project) => void
   onClearWorkspaceProject?: () => void
   showAssistantPicker?: boolean
-  onSelectAssistant?: (assistant: { id: string; name: string; tagline: string }) => void
-  selectedAssistant?: { id: string; name: string; tagline: string }
+  onSelectAssistant?: (assistant: Assistant) => void
+  selectedAssistant?: Assistant
   /** When user clicks "Edit in chat" from Files view, switch to chat and pre-fill this message. */
   pendingChatMessage?: string | null
   onClearPendingChatMessage?: () => void
@@ -74,31 +77,6 @@ interface MainContentProps {
   /** Called from Discover view when user clicks a suggestion or "explore next"; parent should switch to chat and set pendingChatMessage. */
   onSendToChatFromDiscover?: (text: string) => void
 }
-
-type ChatMessage = { role: "user" | "assistant"; content: string }
-
-/** Extended message shape for demo only (sources, extraction, taskCard, feedback). */
-type DemoMessage = ChatMessage & {
-  id?: number
-  sources?: { text: string; field: string }[]
-  extraction?: { field: string; value: string }
-  type?: "text" | "taskCard" | "feedback"
-  taskText?: string
-  taskStatus?: "complete" | "pending"
-  bookmarked?: boolean
-}
-
-const MOCK_DEMO_MESSAGES: DemoMessage[] = [
-  { id: 1, role: "assistant", content: "Good morning! I'm Eva, your design planning assistant. What room are you working on today?" },
-  { id: 2, role: "user", content: "I'm thinking about redoing my living room", sources: [{ text: "living room", field: "roomType" }] },
-  { id: 3, role: "assistant", content: "Great — I've noted <hl>living room</hl> as your project space. Do you have a style direction in mind?", extraction: { field: "Room Type", value: "Living Room" } },
-  { id: 4, role: "user", content: "Something minimalist, warm tones, big comfy sofa", sources: [{ text: "minimalist", field: "style" }, { text: "warm tones", field: "color" }, { text: "sofa", field: "furniture" }] },
-  { id: 5, role: "assistant", content: "Capturing <hl>minimalist</hl> as your style and <hl>sofa</hl> as a must-have. Budget range?", extraction: { field: "Style + Furniture", value: "Minimalist, Sofa" } },
-  { id: 6, role: "user", content: "Around 4k, nothing farmhouse please." },
-  { id: 7, role: "assistant", content: "Got it — <hl>$4,000</hl> budget, avoiding <hl>farmhouse</hl>. I've updated your brief.", extraction: { field: "Budget + Exclusion", value: "$4,000 / −Farmhouse" } },
-  { id: 8, role: "assistant", type: "taskCard", content: "", taskText: "Living Room Design Brief — style, budget, furniture captured", taskStatus: "complete", bookmarked: true },
-  { id: 9, role: "assistant", type: "feedback", content: "Does this look right? You can adjust the layout or add more furniture." },
-]
 
 function parseHighlightedContent(text: string) {
   const parts = text.split(/(<hl>.*?<\/hl>)/g)
@@ -172,27 +150,10 @@ const ALL_TRAITS = Array.from(
   new Set(MOCK_ASSISTANTS.flatMap((a) => a.traits)),
 ).sort()
 
-const MOCK_WORKSPACES = [
-  { id: "ws-1", name: "Home Renovation" },
-  { id: "ws-2", name: "Office Design" },
-  { id: "ws-3", name: "Client Projects" },
-]
-
-const MOCK_PROJECTS_BY_WORKSPACE: Record<string, { id: string; name: string }[]> = {
-  "ws-1": [
-    { id: "proj-1a", name: "Living Room" },
-    { id: "proj-1b", name: "Kitchen & Dining" },
-    { id: "proj-1c", name: "Master Bedroom" },
-  ],
-  "ws-2": [
-    { id: "proj-2a", name: "Reception Area" },
-    { id: "proj-2b", name: "Conference Rooms" },
-  ],
-  "ws-3": [
-    { id: "proj-3a", name: "Boutique Store" },
-    { id: "proj-3b", name: "Restaurant Fit-out" },
-  ],
-}
+const chatSuggestionCardsWithIcons = CHAT_SUGGESTION_CARDS.map((card) => ({
+  ...card,
+  icon: card.id === "living-room" ? Home : card.id === "home-office" ? Briefcase : card.id === "bedroom" ? Moon : Sun,
+}))
 
 export function MainContent({
   activeItem,
@@ -214,7 +175,7 @@ export function MainContent({
   const [isSaved, setIsSaved] = useState(false)
   const [chatMessagesByKey, setChatMessagesByKey] = useState<Record<string, ChatMessage[]>>({})
   const [chatInputValue, setChatInputValue] = useState("")
-  const [selectedWorkspaceForView, setSelectedWorkspaceForView] = useState<{ id: string; name: string } | null>(null)
+  const [selectedWorkspaceForView, setSelectedWorkspaceForView] = useState<Workspace | null>(null)
 
   useEffect(() => {
     setSelectedWorkspaceForView(null)
@@ -271,37 +232,10 @@ export function MainContent({
         content: "Thanks for your message. How can I help with your design or furniture choices today?",
       }
       setChatMessagesByKey((prev) => ({ ...prev, [key]: [...(prev[key] || []), assistantMsg] }))
-    }, 400)
+    }, AI_RESPONSE_DELAY_MS)
   }
 
-  const chatSuggestionCards = [
-    {
-      id: "living-room",
-      title: "Living Room",
-      description: "Redesign your main gathering space.",
-      icon: Home,
-    },
-    {
-      id: "home-office",
-      title: "Home Office",
-      description: "Create a focused, productive workspace.",
-      icon: Briefcase,
-    },
-    {
-      id: "bedroom",
-      title: "Bedroom",
-      description: "Design a calm retreat for rest.",
-      icon: Moon,
-    },
-    {
-      id: "open-plan",
-      title: "Open Plan",
-      description: "Combine living, dining, kitchen.",
-      icon: Sun,
-    },
-  ]
-
-  const handleSuggestionClick = (card: (typeof chatSuggestionCards)[0]) => {
+  const handleSuggestionClick = (card: (typeof chatSuggestionCardsWithIcons)[0]) => {
     const key = chatKey
     const userMsg: ChatMessage = { role: "user", content: `I'd like help with ${card.title}. ${card.description}` }
     setChatMessagesByKey((prev) => ({ ...prev, [key]: [...(prev[key] || []), userMsg] }))
@@ -311,7 +245,7 @@ export function MainContent({
         content: `Great choice! Let's work on your ${card.title.toLowerCase()}. Tell me more about your space, style preferences, or any specific challenges you're facing.`,
       }
       setChatMessagesByKey((prev) => ({ ...prev, [key]: [...(prev[key] || []), assistantMsg] }))
-    }, 400)
+    }, AI_RESPONSE_DELAY_MS)
   }
 
   const getActiveIcon = () => {
@@ -370,7 +304,7 @@ export function MainContent({
                 Tell me about your space and I'll organize your ideas into a design brief.
               </p>
               <div className="grid grid-cols-2 gap-3 w-full max-w-lg">
-                {chatSuggestionCards.map((card) => {
+                {chatSuggestionCardsWithIcons.map((card) => {
                   const Icon = card.icon
                   return (
                     <button
@@ -544,7 +478,7 @@ export function MainContent({
 
     if (activeItem === "workspace") {
       if (selectedWorkspaceForView) {
-        const projects = MOCK_PROJECTS_BY_WORKSPACE[selectedWorkspaceForView.id] || []
+        const projects = MOCK_PROJECTS_BY_WORKSPACE[selectedWorkspaceForView.id] ?? []
         const projectChatKey =
           currentWorkspace?.id === selectedWorkspaceForView.id && currentProject
             ? `${selectedWorkspaceForView.id}-${currentProject.id}`
@@ -626,7 +560,7 @@ export function MainContent({
           <h1 className="text-base font-semibold text-foreground mb-4">Workspace</h1>
           <p className="text-xs text-muted-foreground mb-4">Choose a workspace to view its projects. The selected workspace and project are shown in the bar above.</p>
           <div className="space-y-2">
-            {MOCK_WORKSPACES.map((workspace) => (
+            {MOCK_WORKSPACES.map((workspace: Workspace) => (
               <button
                 key={workspace.id}
                 type="button"

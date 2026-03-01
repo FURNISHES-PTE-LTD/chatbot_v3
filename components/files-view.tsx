@@ -4,55 +4,7 @@ import { useState } from "react"
 import { Download, Edit3 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
-
-// Mock data: images, floorplans, documents from conversations
-export const FILES_DATA = [
-  {
-    id: "f1",
-    type: "image",
-    title: "Cozy Minimalist Living Room",
-    desc: "Mood board — warm tones, clean lines",
-    time: "10:15 AM",
-    thumb: "mood",
-    tags: ["Mood", "Style"],
-  },
-  {
-    id: "f2",
-    type: "floorplan",
-    title: "Living Room Layout v1",
-    desc: "4m × 5m · Sofa on long wall · Table center",
-    time: "10:16 AM",
-    thumb: "plan",
-    tags: ["Floorplan", "Layout"],
-  },
-  {
-    id: "f3",
-    type: "image",
-    title: "Warm Tone Palette",
-    desc: "Terracotta, sand, cream, muted ochre",
-    time: "Yesterday",
-    thumb: "palette",
-    tags: ["Color", "Palette"],
-  },
-  {
-    id: "f4",
-    type: "image",
-    title: "Boucle Sofa Reference",
-    desc: "Low-profile modular sofa in cream",
-    time: "Yesterday",
-    thumb: "sofa",
-    tags: ["Furniture", "Reference"],
-  },
-  {
-    id: "f5",
-    type: "floorplan",
-    title: "Office Layout Draft",
-    desc: "3m × 4m · L-desk · Bookshelf",
-    time: "3 days ago",
-    thumb: "plan2",
-    tags: ["Floorplan", "Office"],
-  },
-]
+import { FILES_DATA } from "@/lib/mock-data"
 
 export type FileItem = (typeof FILES_DATA)[number]
 

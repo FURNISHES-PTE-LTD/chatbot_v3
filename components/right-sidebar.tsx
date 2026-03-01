@@ -1,5 +1,6 @@
 "use client"
 
+import type { Assistant } from "@/lib/types"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -7,7 +8,7 @@ import { RefreshCw, Lightbulb, Home, DollarSign, Star, ListChecks } from "lucide
 
 interface RightSidebarProps {
   onChangeAssistantClick?: () => void
-  selectedAssistant?: { id: string; name: string; tagline: string }
+  selectedAssistant?: Assistant
 }
 
 function PreferenceCard({
