@@ -1,4 +1,5 @@
 import { getDomainConfig } from "@/lib/domain-config"
+import { getOpenAIKey } from "@/lib/openai"
 
 const MAX_MESSAGE_LENGTH = 10000
 
@@ -46,6 +47,36 @@ export function validateInput(content: string): { valid: boolean; reason?: strin
     if (!inj.safe) return { valid: false, reason: inj.reason }
   }
   return { valid: true }
+}
+
+/**
+ * Call OpenAI Moderation API when guardrails.moderation_enabled is true (Gap 23).
+ * On API failure, allows the message through to avoid blocking users.
+ */
+export async function checkModeration(
+  message: string
+): Promise<{ safe: boolean; reason?: string }> {
+  const guardrails = getDomainConfig().guardrails
+  if (!guardrails?.moderation_enabled) return { safe: true }
+  const key = getOpenAIKey()
+  if (!key || typeof message !== "string" || !message.trim()) return { safe: true }
+
+  try {
+    const res = await fetch("https://api.openai.com/v1/moderations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({ input: message }),
+    })
+    if (!res.ok) return { safe: true }
+    const data = (await res.json()) as { results?: Array<{ flagged?: boolean }> }
+    const flagged = data.results?.[0]?.flagged === true
+    return flagged ? { safe: false, reason: "Content flagged by moderation" } : { safe: true }
+  } catch {
+    return { safe: true }
+  }
 }
 
 /** Patterns that indicate leaked prompt/system text in LLM output. Ported from V2. */

@@ -2,7 +2,12 @@ import { streamText } from "ai"
 import { openai } from "@ai-sdk/openai"
 import { prisma } from "@/lib/db"
 import { z } from "zod"
-import { validateInput, buildSafeSystemPrompt, sanitizeOutput } from "@/lib/guardrails"
+import {
+  validateInput,
+  buildSafeSystemPrompt,
+  sanitizeOutput,
+  checkModeration,
+} from "@/lib/guardrails"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { log } from "@/lib/logger"
 import { getServerSession } from "next-auth"
@@ -43,6 +48,10 @@ export async function POST(req: Request) {
   const validation = validateInput(message)
   if (!validation.valid) {
     return Response.json({ error: validation.reason }, { status: 400 })
+  }
+  const moderation = await checkModeration(message)
+  if (!moderation.safe) {
+    return Response.json({ error: moderation.reason }, { status: 400 })
   }
 
   const session = await getServerSession(authOptions)
