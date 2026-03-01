@@ -4,7 +4,12 @@ import { zodSchema } from "ai"
 import { z } from "zod"
 import { prisma } from "@/lib/db"
 import { messagesToTranscript } from "@/lib/api-helpers"
-import { getOpenAIKey } from "@/lib/openai"
+import {
+  getOpenAIKey,
+  withFallback,
+  OPENAI_PRIMARY_MODEL,
+  OPENAI_FALLBACK_MODEL,
+} from "@/lib/openai"
 
 const InsightsSchema = z.object({
   keyInsights: z.array(z.string()),
@@ -43,19 +48,30 @@ export async function GET(
     })
   }
 
-  const { object } = await generateObject({
-    model: openai("gpt-4o-mini"),
-    schema: zodSchema(InsightsSchema),
-    prompt: `Analyze this interior design conversation and extract:
+  const prompt = `Analyze this interior design conversation and extract:
 - keyInsights: 3-5 most important facts established
 - topics: design topics covered (as short tags)
 - recommendations: 3-4 actionable next steps
 - exploreNext: 2-3 questions the user hasn't answered yet
 
 Conversation:
-${transcript}`,
-    maxRetries: 3,
-  })
+${transcript}`
+  const { object } = await withFallback(
+    () =>
+      generateObject({
+        model: openai(OPENAI_PRIMARY_MODEL),
+        schema: zodSchema(InsightsSchema),
+        prompt,
+        maxRetries: 3,
+      }),
+    () =>
+      generateObject({
+        model: openai(OPENAI_FALLBACK_MODEL),
+        schema: zodSchema(InsightsSchema),
+        prompt,
+        maxRetries: 2,
+      })
+  )
 
   return Response.json(object)
 }

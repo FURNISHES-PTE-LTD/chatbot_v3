@@ -10,7 +10,11 @@ import { authOptions } from "@/lib/auth"
 import { getDomainConfig } from "@/lib/domain-config"
 import { buildContext } from "@/lib/context-builder"
 import { getPreferencesAsRecord } from "@/lib/api-helpers"
-import { getOpenAIKey, OPENAI_KEY_MISSING_MESSAGE } from "@/lib/openai"
+import {
+  getOpenAIKey,
+  OPENAI_KEY_MISSING_MESSAGE,
+  OPENAI_PRIMARY_MODEL,
+} from "@/lib/openai"
 
 const RequestSchema = z.object({
   conversationId: z.string().optional(),
@@ -81,13 +85,25 @@ export async function POST(req: Request) {
   const systemPrompt = buildSafeSystemPrompt(basePrompt)
 
   const result = streamText({
-    model: openai("gpt-4o-mini"),
+    model: openai(OPENAI_PRIMARY_MODEL),
     system: systemPrompt,
     messages: messages.map((m) => ({
       role: m.role as "user" | "assistant" | "system",
       content: m.content,
     })),
     maxRetries: 3,
+    onFinish: ({ usage }) => {
+      if (usage)
+        log({
+          level: "info",
+          event: "llm_usage",
+          conversationId: convoId,
+          promptTokens: usage.promptTokens,
+          completionTokens: usage.completionTokens,
+          totalTokens: usage.totalTokens,
+          model: OPENAI_PRIMARY_MODEL,
+        })
+    },
   })
 
   result.text.then(async (fullText) => {

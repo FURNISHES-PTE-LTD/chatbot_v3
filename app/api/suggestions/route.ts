@@ -4,7 +4,12 @@ import { zodSchema } from "ai"
 import { z } from "zod"
 import { prisma } from "@/lib/db"
 import { messagesToTranscript } from "@/lib/api-helpers"
-import { getOpenAIKey } from "@/lib/openai"
+import {
+  getOpenAIKey,
+  withFallback,
+  OPENAI_PRIMARY_MODEL,
+  OPENAI_FALLBACK_MODEL,
+} from "@/lib/openai"
 
 const SuggestionsRequestSchema = z.object({
   conversationId: z.string(),
@@ -41,15 +46,26 @@ export async function POST(req: Request) {
 
   const transcript = messagesToTranscript(messages)
 
-  const { object } = await generateObject({
-    model: openai("gpt-4o-mini"),
-    schema: zodSchema(SuggestionsSchema),
-    prompt: `Based on this interior design conversation, suggest 6-8 short follow-up prompts the user might want to ask next. Return only a JSON object with "suggestions": array of short strings (each 1-5 words), e.g. "Mood image", "Floorplan", "Cozy living room".
+  const prompt = `Based on this interior design conversation, suggest 6-8 short follow-up prompts the user might want to ask next. Return only a JSON object with "suggestions": array of short strings (each 1-5 words), e.g. "Mood image", "Floorplan", "Cozy living room".
 
 Conversation:
-${transcript}`,
-    maxRetries: 3,
-  })
+${transcript}`
+  const { object } = await withFallback(
+    () =>
+      generateObject({
+        model: openai(OPENAI_PRIMARY_MODEL),
+        schema: zodSchema(SuggestionsSchema),
+        prompt,
+        maxRetries: 3,
+      }),
+    () =>
+      generateObject({
+        model: openai(OPENAI_FALLBACK_MODEL),
+        schema: zodSchema(SuggestionsSchema),
+        prompt,
+        maxRetries: 2,
+      })
+  )
 
   return Response.json({ suggestions: object.suggestions.slice(0, 8) })
 }

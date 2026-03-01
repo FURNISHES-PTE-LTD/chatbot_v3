@@ -23,7 +23,13 @@ import {
   createStateChangeUpdate,
 } from "@/lib/extraction/state-change"
 import { applyVerifierToEntities } from "@/lib/extraction/verifier"
-import { getOpenAIKey, OPENAI_KEY_MISSING_MESSAGE } from "@/lib/openai"
+import {
+  getOpenAIKey,
+  OPENAI_KEY_MISSING_MESSAGE,
+  withFallback,
+  OPENAI_PRIMARY_MODEL,
+  OPENAI_FALLBACK_MODEL,
+} from "@/lib/openai"
 
 function getExtractionFieldEnum() {
   const fieldIds = getFieldIds()
@@ -110,12 +116,23 @@ For each entity you extract, optionally include evidenceSpans: array of { start,
 
 Message: "${expandedContent}"`
 
-  const { object } = await generateObject({
-    model: openai("gpt-4o-mini"),
-    schema: zodSchema(ExtractionSchema),
-    prompt: enrichedPrompt,
-    maxRetries: 3,
-  })
+  const result = await withFallback(
+    () =>
+      generateObject({
+        model: openai(OPENAI_PRIMARY_MODEL),
+        schema: zodSchema(ExtractionSchema),
+        prompt: enrichedPrompt,
+        maxRetries: 3,
+      }),
+    () =>
+      generateObject({
+        model: openai(OPENAI_FALLBACK_MODEL),
+        schema: zodSchema(ExtractionSchema),
+        prompt: enrichedPrompt,
+        maxRetries: 2,
+      })
+  )
+  const { object } = result
 
   let entities: Array<ExtractionEntity & { needsConfirmation?: boolean; confirmMessage?: string }> =
     [...object.entities]

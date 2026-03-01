@@ -7,7 +7,12 @@ import { openai } from "@ai-sdk/openai"
 import { zodSchema } from "ai"
 import { z } from "zod"
 import { prisma } from "@/lib/db"
-import { getOpenAIKey } from "@/lib/openai"
+import {
+  getOpenAIKey,
+  withFallback,
+  OPENAI_PRIMARY_MODEL,
+  OPENAI_FALLBACK_MODEL,
+} from "@/lib/openai"
 
 const ExportSummarySchema = z.object({
   summary: z.string().describe("2-3 sentence project summary"),
@@ -64,12 +69,23 @@ export async function GET(
         .slice(-20)
         .map((m) => `${m.role}: ${(m.content ?? "").slice(0, 150)}`)
         .join("\n")
-      const { object } = await generateObject({
-        model: openai("gpt-4o-mini"),
-        schema: zodSchema(ExportSummarySchema),
-        prompt: `Preferences: ${prefsStr}\nRecent messages:\n${recent}\n\nRespond with JSON: "summary" (2-3 sentences), "key_decisions" (array of short strings), "open_questions" (1-3 questions). Output only JSON.`,
-        maxRetries: 2,
-      })
+      const exportPrompt = `Preferences: ${prefsStr}\nRecent messages:\n${recent}\n\nRespond with JSON: "summary" (2-3 sentences), "key_decisions" (array of short strings), "open_questions" (1-3 questions). Output only JSON.`
+      const { object } = await withFallback(
+        () =>
+          generateObject({
+            model: openai(OPENAI_PRIMARY_MODEL),
+            schema: zodSchema(ExportSummarySchema),
+            prompt: exportPrompt,
+            maxRetries: 2,
+          }),
+        () =>
+          generateObject({
+            model: openai(OPENAI_FALLBACK_MODEL),
+            schema: zodSchema(ExportSummarySchema),
+            prompt: exportPrompt,
+            maxRetries: 1,
+          })
+      )
       summary = object.summary ?? ""
       key_decisions = object.key_decisions ?? []
       open_questions = object.open_questions ?? []

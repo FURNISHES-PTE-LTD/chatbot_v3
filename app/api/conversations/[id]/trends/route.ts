@@ -6,7 +6,12 @@ import { generateText } from "ai"
 import { openai } from "@ai-sdk/openai"
 import { prisma } from "@/lib/db"
 import { getDomainConfig } from "@/lib/domain-config"
-import { getOpenAIKey } from "@/lib/openai"
+import {
+  getOpenAIKey,
+  withFallback,
+  OPENAI_PRIMARY_MODEL,
+  OPENAI_FALLBACK_MODEL,
+} from "@/lib/openai"
 
 function trajectoryFromChanges(
   changes: Array<{ field: string }>
@@ -58,11 +63,21 @@ export async function GET(
   if (getOpenAIKey() && changes.length > 0) {
     try {
       const recent = JSON.stringify(fields.slice(-20))
-      const { text } = await generateText({
-        model: openai("gpt-4o-mini"),
-        prompt: `Preference change history (field, type): ${recent}\nCurrent trajectory: ${trajectory}. In one short sentence, summarize the user's preference evolution. No JSON.`,
-        maxRetries: 2,
-      })
+      const prompt = `Preference change history (field, type): ${recent}\nCurrent trajectory: ${trajectory}. In one short sentence, summarize the user's preference evolution. No JSON.`
+      const { text } = await withFallback(
+        () =>
+          generateText({
+            model: openai(OPENAI_PRIMARY_MODEL),
+            prompt,
+            maxRetries: 2,
+          }),
+        () =>
+          generateText({
+            model: openai(OPENAI_FALLBACK_MODEL),
+            prompt,
+            maxRetries: 1,
+          })
+      )
       if (text?.trim()) summary = text.trim()
     } catch {
       // keep default summary

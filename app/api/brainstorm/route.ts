@@ -3,7 +3,13 @@ import { openai } from "@ai-sdk/openai"
 import { z } from "zod"
 import { prisma } from "@/lib/db"
 import { messagesToTranscript } from "@/lib/api-helpers"
-import { getOpenAIKey, OPENAI_KEY_MISSING_MESSAGE } from "@/lib/openai"
+import {
+  getOpenAIKey,
+  OPENAI_KEY_MISSING_MESSAGE,
+  withFallback,
+  OPENAI_PRIMARY_MODEL,
+  OPENAI_FALLBACK_MODEL,
+} from "@/lib/openai"
 
 const BrainstormRequestSchema = z.object({
   conversationId: z.string(),
@@ -38,16 +44,26 @@ export async function POST(req: Request) {
   })
   const transcript = messagesToTranscript(messages)
 
-  const { text } = await generateText({
-    model: openai("gpt-4o-mini"),
-    prompt: `You are Eva, an interior design assistant. Based on this conversation and preferences, write one short paragraph (2-3 sentences) that summarizes design ideas and suggests next steps. Speak directly to the user. Keep it under 80 words.
+  const prompt = `You are Eva, an interior design assistant. Based on this conversation and preferences, write one short paragraph (2-3 sentences) that summarizes design ideas and suggests next steps. Speak directly to the user. Keep it under 80 words.
 
 Preferences: ${prefs}
 
 Conversation:
-${transcript}`,
-    maxRetries: 3,
-  })
+${transcript}`
+  const { text } = await withFallback(
+    () =>
+      generateText({
+        model: openai(OPENAI_PRIMARY_MODEL),
+        prompt,
+        maxRetries: 3,
+      }),
+    () =>
+      generateText({
+        model: openai(OPENAI_FALLBACK_MODEL),
+        prompt,
+        maxRetries: 2,
+      })
+  )
 
   return Response.json({ summary: text.trim() })
 }
