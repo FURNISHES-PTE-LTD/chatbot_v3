@@ -120,8 +120,8 @@ export function LeftSidebar({ onHelpClick }: LeftSidebarProps) {
                   <div className="space-y-0">
                     {recents.map((item) => (
                       <button
-                        key={item.id}
                         type="button"
+                        key={item.id}
                         onClick={() => onItemClick(item.id, item.label)}
                         className={cn(
                           "flex w-full items-center rounded-none px-5 py-1.5 text-left text-xs font-medium cursor-pointer",

@@ -254,8 +254,8 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
                         const sx = suggestionStyles[s.type]
                         return (
                           <button
-                            key={i}
                             type="button"
+                            key={i}
                             onClick={() => onSendToChat?.(s.text)}
                             className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border cursor-pointer hover:border-primary/30 hover:bg-primary/5 transition-all text-left w-full"
                           >
@@ -291,8 +291,8 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
           </div>
           {EXPLORE_NEXT.map((s, i) => (
             <button
-              key={i}
               type="button"
+              key={i}
               onClick={() => onSendToChat?.(s)}
               className="flex items-center gap-2 text-xs text-primary mt-2 hover:underline w-full text-left cursor-pointer"
             >

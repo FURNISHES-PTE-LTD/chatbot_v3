@@ -101,8 +101,8 @@ export function FilesView({ onEditInChat }: FilesViewProps) {
               { id: "floorplan" as const, label: "Floorplans" },
             ].map((f) => (
               <button
-                key={f.id}
                 type="button"
+                key={f.id}
                 onClick={() => setFilter(f.id)}
                 className={cn(
                   "px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer",
@@ -119,8 +119,8 @@ export function FilesView({ onEditInChat }: FilesViewProps) {
           <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
             {filtered.map((file) => (
               <button
-                key={file.id}
                 type="button"
+                key={file.id}
                 onClick={() => setSelected(file)}
                 className="rounded-xl border border-border bg-card overflow-hidden text-left cursor-pointer transition-all hover:border-primary hover:shadow-lg hover:shadow-primary/5 group"
               >

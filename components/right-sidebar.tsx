@@ -57,8 +57,8 @@ function PreferenceCard({
         ) : (
           options.map((opt) => (
             <button
-              key={opt}
               type="button"
+              key={opt}
               onClick={() => onChange(opt)}
               className={cn("rounded-md px-2 py-1 text-[10px] font-medium bg-muted/80 text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-200", tabClass)}
             >

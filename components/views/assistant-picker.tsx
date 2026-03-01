@@ -77,8 +77,8 @@ export function AssistantPickerView() {
             <SectionLabel>Style</SectionLabel>
             {ASSISTANT_STYLE_OPTIONS.map((opt) => (
               <button
-                key={opt.value || "all"}
                 type="button"
+                key={opt.value || "all"}
                 onClick={() => setStyleFilter(opt.value as AssistantStyleFocus | "")}
                 className={cn(
                   "rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 cursor-pointer",
@@ -95,8 +95,8 @@ export function AssistantPickerView() {
             <SectionLabel>Traits</SectionLabel>
             {ALL_TRAITS.map((trait) => (
               <button
-                key={trait}
                 type="button"
+                key={trait}
                 onClick={() => toggleTrait(trait)}
                 className={cn(
                   "rounded-full px-2.5 py-1 text-[11px] font-medium transition-all duration-200 cursor-pointer",
@@ -131,8 +131,8 @@ export function AssistantPickerView() {
           ) : (
             filteredAssistants.map((assistant) => (
               <button
-                key={assistant.id}
                 type="button"
+                key={assistant.id}
                 onClick={() => {
                 setSelectedAssistant({ id: assistant.id, name: assistant.name, tagline: assistant.tagline })
                 setShowAssistantPicker(false)

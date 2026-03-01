@@ -84,8 +84,8 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                   const Icon = card.icon
                   return (
                     <button
-                      key={card.id}
                       type="button"
+                      key={card.id}
                       onClick={() => handleSuggestionClick(card)}
                       className="flex flex-col items-start gap-1.5 rounded-lg border border-border bg-card p-4 text-left transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
                     >
@@ -196,8 +196,8 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
             "Lighting ideas",
           ].map((label) => (
             <button
-              key={label}
               type="button"
+              key={label}
               onClick={() => setInputValue(label)}
               className="rounded-full border border-border bg-transparent px-2.5 py-1 text-xs font-medium text-muted-foreground transition-all duration-200 hover:bg-accent/15 hover:text-primary cursor-pointer"
             >

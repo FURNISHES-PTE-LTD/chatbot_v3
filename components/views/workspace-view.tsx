@@ -35,8 +35,8 @@ export function WorkspaceView({
         <div className="space-y-2">
           {MOCK_WORKSPACES.map((workspace: Workspace) => (
             <button
-              key={workspace.id}
               type="button"
+              key={workspace.id}
               onClick={() => {
                 onClearWorkspaceProject?.()
                 onSelectWorkspaceForView(workspace)
@@ -106,8 +106,8 @@ export function WorkspaceView({
       <div className="space-y-2">
         {projects.map((project) => (
           <button
-            key={project.id}
             type="button"
+            key={project.id}
             onClick={() => onSelectWorkspaceProject?.(selectedWorkspaceForView, project)}
             className={cn(
               "w-full flex items-center gap-3 rounded-lg border border-border bg-card p-4 text-left transition-all duration-200 cursor-pointer hover:border-primary/50 hover:bg-primary/5",

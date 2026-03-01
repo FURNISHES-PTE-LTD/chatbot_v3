@@ -11,8 +11,8 @@ export function CustomizeView() {
           <div className="flex gap-2">
             {["Metric", "Imperial"].map((unit) => (
               <button
-                key={unit}
                 type="button"
+                key={unit}
                 className="rounded bg-secondary/50 px-3 py-1.5 text-xs transition-colors duration-200 hover:bg-accent hover:text-accent-foreground"
               >
                 {unit}
