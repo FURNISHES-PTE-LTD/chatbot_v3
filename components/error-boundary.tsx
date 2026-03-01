@@ -7,18 +7,21 @@ interface Props {
   fallback?: ReactNode
 }
 
+const MAX_RETRIES = 3
+
 interface State {
   hasError: boolean
   error?: Error
+  retryCount: number
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props)
-    this.state = { hasError: false }
+    this.state = { hasError: false, retryCount: 0 }
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error }
   }
 
@@ -29,19 +32,27 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback
+      const { retryCount } = this.state
+      const canRetry = retryCount < MAX_RETRIES
       return (
         <div className="flex flex-col items-center justify-center min-h-[200px] p-6 text-center">
           <p className="text-sm font-medium text-foreground mb-2">Something went wrong</p>
           <p className="text-xs text-muted-foreground mb-4">
             Refresh the page or try again later.
           </p>
-          <button
-            type="button"
-            onClick={() => this.setState({ hasError: false })}
-            className="text-xs font-medium text-primary hover:underline"
-          >
-            Try again
-          </button>
+          {canRetry ? (
+            <button
+              type="button"
+              onClick={() =>
+                this.setState((s) => ({ hasError: false, retryCount: s.retryCount + 1 }))
+              }
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              Try again
+            </button>
+          ) : (
+            <p className="text-xs text-muted-foreground">Retry limit reached. Please refresh the page.</p>
+          )}
         </div>
       )
     }
