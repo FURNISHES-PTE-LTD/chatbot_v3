@@ -22,6 +22,7 @@ import {
   detectStateChangeIntent,
   createStateChangeUpdate,
 } from "@/lib/extraction/state-change"
+import { applyVerifierToEntities } from "@/lib/extraction/verifier"
 import { getOpenAIKey, OPENAI_KEY_MISSING_MESSAGE } from "@/lib/openai"
 
 function getExtractionFieldEnum() {
@@ -36,12 +37,19 @@ const ExtractRequestSchema = z.object({
   conversationId: z.string(),
 })
 
+const EvidenceSpanSchema = z.object({
+  start: z.number(),
+  end: z.number(),
+  text: z.string(),
+})
+
 const ExtractionSchema = z.object({
   entities: z.array(
     z.object({
       text: z.string(),
       field: getExtractionFieldEnum(),
       confidence: z.number().min(0).max(1),
+      evidenceSpans: z.array(EvidenceSpanSchema).optional(),
     }),
   ),
 })
@@ -94,9 +102,11 @@ export async function POST(req: Request) {
       ? ` Detected negations (things user does NOT want): ${negationResult.negatedTerms.join(", ")}. Include relevant ones in the exclusion field.`
       : ""
 
-  // 2. Enriched prompt for LLM
+  // 2. Enriched prompt for LLM (optionally include evidence spans for verification)
   const enrichedPrompt = `Extract interior design preferences from this message. Only extract what is explicitly stated. Set confidence below 0.7 for ambiguous mentions.
 Known vocabulary expansions applied to message where relevant: prefer standard terms (e.g. mid-century modern not mcm, scandinavian not scandi).${negationContext}${inferredContext}
+
+For each entity you extract, optionally include evidenceSpans: array of { start, end, text } where start/end are 0-based character indices in the Message below for the exact substring that supports this value. If the value is not literally stated, omit evidenceSpans.
 
 Message: "${expandedContent}"`
 
@@ -109,6 +119,9 @@ Message: "${expandedContent}"`
 
   let entities: Array<ExtractionEntity & { needsConfirmation?: boolean; confirmMessage?: string }> =
     [...object.entities]
+
+  // 2b. Verifier: reduce confidence by 0.2 when no valid evidence (Gap 4)
+  entities = applyVerifierToEntities(entities, content) as typeof entities
 
   // 3. Add exclusion entities from negation result if not already covered
   if (negationResult.hasNegation && negationResult.negatedTerms.length > 0) {
