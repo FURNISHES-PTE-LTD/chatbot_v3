@@ -112,7 +112,7 @@ export async function POST(req: Request) {
   const enrichedPrompt = `Extract interior design preferences from this message. Only extract what is explicitly stated. Set confidence below 0.7 for ambiguous mentions.
 Known vocabulary expansions applied to message where relevant: prefer standard terms (e.g. mid-century modern not mcm, scandinavian not scandi).${negationContext}${inferredContext}
 
-For each entity you extract, optionally include evidenceSpans: array of { start, end, text } where start/end are 0-based character indices in the Message below for the exact substring that supports this value. If the value is not literally stated, omit evidenceSpans.
+For each entity you extract, include evidenceSpans: array of { start, end, text } where start/end are 0-based character indices in the Message below for the exact substring that supports this value. Only extract values that are literally stated; if the value is inferred rather than stated, omit that entity or set low confidence and omit evidenceSpans for it.
 
 Message: "${expandedContent}"`
 

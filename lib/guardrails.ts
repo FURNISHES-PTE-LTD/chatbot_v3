@@ -41,8 +41,9 @@ export function validateInput(content: string): { valid: boolean; reason?: strin
   if (content.trim().length === 0) {
     return { valid: false, reason: "Empty message" }
   }
+  // Injection detection: default true so production is protected even if config missing
   const guardrails = getDomainConfig().guardrails
-  if (guardrails?.injection_detection) {
+  if (guardrails?.injection_detection !== false) {
     const inj = checkInjection(content)
     if (!inj.safe) return { valid: false, reason: inj.reason }
   }
@@ -113,6 +114,45 @@ export function sanitizeOutput(text: string): string {
     result = result.slice(0, MAX_OUTPUT_LENGTH - 3).trimEnd() + "..."
   }
   return result
+}
+
+/** Strip a single line of prompt-leak content; return empty if line should be dropped. */
+function stripLine(line: string): string {
+  let stripped = line
+  for (const pat of PROMPT_LEAK_PATTERNS) {
+    stripped = stripped.replace(pat, "")
+  }
+  stripped = stripped.trim()
+  if (!stripped || ROLE_LINE.test(stripped)) return ""
+  return stripped
+}
+
+/**
+ * Create a TransformStream that sanitizes streamed LLM output line-by-line
+ * so the user never sees leaked [system]: or <|im_start|> etc.
+ */
+export function createSanitizeStreamTransform(): TransformStream<Uint8Array, Uint8Array> {
+  const encoder = new TextEncoder()
+  const decoder = new TextDecoder()
+  let buffer = ""
+
+  return new TransformStream({
+    transform(chunk, controller) {
+      buffer += decoder.decode(chunk, { stream: true })
+      const lines = buffer.split("\n")
+      buffer = lines.pop() ?? ""
+      for (const line of lines) {
+        const out = stripLine(line)
+        if (out) controller.enqueue(encoder.encode(out + "\n"))
+      }
+    },
+    flush(controller) {
+      if (buffer) {
+        const out = stripLine(buffer)
+        if (out) controller.enqueue(encoder.encode(out))
+      }
+    },
+  })
 }
 
 export function buildSafeSystemPrompt(base: string): string {

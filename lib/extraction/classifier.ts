@@ -138,6 +138,7 @@ export function classifyMessageIntent(
 /** Intents for which we skip LLM extraction (no preference to extract). */
 export const SKIP_EXTRACTION_INTENTS: MessageIntent[] = [
   MessageIntent.EXPLORATORY,
+  MessageIntent.QUESTION, // pure questions e.g. "What colors work with beige?" don't state preferences
 ]
 
 /** Return true if we should skip the LLM extraction call for this intent. */

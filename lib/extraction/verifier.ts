@@ -6,6 +6,8 @@ import type { EvidenceSpan } from "./evidence-validator"
 import { hasValidEvidence } from "./evidence-validator"
 
 const NO_EVIDENCE_CONFIDENCE_PENALTY = 0.2
+/** Cap for entities with no valid evidence — don't trust LLM blindly. */
+const MAX_CONFIDENCE_WITHOUT_EVIDENCE = 0.5
 
 export type EntityWithEvidence = {
   text: string
@@ -16,7 +18,7 @@ export type EntityWithEvidence = {
 
 /**
  * Apply verifier: for each entity, if it has evidenceSpans validate against message;
- * if no valid evidence, reduce confidence by NO_EVIDENCE_CONFIDENCE_PENALTY.
+ * if no valid evidence, reduce confidence and cap at MAX_CONFIDENCE_WITHOUT_EVIDENCE.
  * Returns entities with confidence adjusted (clamped to [0.1, 1]).
  */
 export function applyVerifierToEntities(
@@ -27,7 +29,9 @@ export function applyVerifierToEntities(
     const spans = entity.evidenceSpans ?? []
     const hasEvidence = hasValidEvidence(message, spans)
     const adjustment = hasEvidence ? 0 : -NO_EVIDENCE_CONFIDENCE_PENALTY
-    const confidence = Math.max(0.1, Math.min(1, entity.confidence + adjustment))
+    let confidence = Math.max(0.1, Math.min(1, entity.confidence + adjustment))
+    if (!hasEvidence && confidence > MAX_CONFIDENCE_WITHOUT_EVIDENCE)
+      confidence = MAX_CONFIDENCE_WITHOUT_EVIDENCE
     return { ...entity, confidence }
   })
 }

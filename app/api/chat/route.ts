@@ -7,6 +7,7 @@ import {
   buildSafeSystemPrompt,
   sanitizeOutput,
   checkModeration,
+  createSanitizeStreamTransform,
 } from "@/lib/guardrails"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { log } from "@/lib/logger"
@@ -19,6 +20,7 @@ import {
   getOpenAIKey,
   OPENAI_KEY_MISSING_MESSAGE,
   OPENAI_PRIMARY_MODEL,
+  computeCost,
 } from "@/lib/openai"
 
 const RequestSchema = z.object({
@@ -102,7 +104,8 @@ export async function POST(req: Request) {
     })),
     maxRetries: 3,
     onFinish: ({ usage }) => {
-      if (usage)
+      if (usage) {
+        const costUsd = computeCost(usage, OPENAI_PRIMARY_MODEL)
         log({
           level: "info",
           event: "llm_usage",
@@ -111,7 +114,9 @@ export async function POST(req: Request) {
           completionTokens: usage.completionTokens,
           totalTokens: usage.totalTokens,
           model: OPENAI_PRIMARY_MODEL,
+          costUsd: Math.round(costUsd * 1e6) / 1e6,
         })
+      }
     },
   })
 
@@ -128,7 +133,16 @@ export async function POST(req: Request) {
     })
   })
 
-  return result.toTextStreamResponse({
+  const response = result.toTextStreamResponse({
     headers: { "X-Conversation-Id": convoId },
   })
+  // Sanitize stream so user never sees leaked [system]: or <|im_start|> etc.
+  if (response.body) {
+    const sanitizedBody = response.body.pipeThrough(createSanitizeStreamTransform())
+    return new Response(sanitizedBody, {
+      status: response.status,
+      headers: response.headers,
+    })
+  }
+  return response
 }
