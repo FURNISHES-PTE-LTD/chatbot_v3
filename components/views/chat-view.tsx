@@ -34,6 +34,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
     setInputValue,
     pendingMessage,
     clearPendingMessage,
+    isStreaming,
   } = useChatContext()
 
   const chatKey =
@@ -180,6 +181,16 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
         )}
       </div>
       <div className="shrink-0 flex flex-col gap-1.5 pt-1.5 border-t border-border -mx-6 px-6">
+        {isStreaming && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+            <ChatAvatar role="assistant" initial="E" size="sm" />
+            <span className="flex gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
+            </span>
+          </div>
+        )}
         <p className="text-xs font-medium flex items-center gap-2">
           <Lightbulb className="h-3.5 w-3.5 text-primary shrink-0" />
           <span className="text-primary">Quick suggestions</span>
@@ -217,7 +228,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
           <button
             type="button"
             onClick={handleSendChatMessage}
-            disabled={!inputValue.trim()}
+            disabled={!inputValue.trim() || isStreaming}
             className="shrink-0 rounded-md p-2 bg-primary text-primary-foreground transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             <Send className="h-4 h-4" />

@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  title     String   @default("New Chat")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  messages  Message[]
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String       // "user" | "assistant" | "system"
+  content        String
+
+  // Extraction results (Phase 8.4)
+  extractions Json? // [{ text, field, confidence }]
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId])
+}
+
+model Preference {
+  id             String   @id @default(cuid())
+  conversationId String
+  field          String   // "roomType" | "style" | "budget" | "color" | "furniture"
+  value          String
+  confidence     Float    @default(0.5)
+  status         String   @default("potential") // "confirmed" | "potential" | "inferred"
+  source         String?  // messageId that established this
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([conversationId, field])
+  @@index([conversationId])
+}
