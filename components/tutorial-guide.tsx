@@ -37,10 +37,10 @@ const tutorialSteps: TutorialStep[] = [
     position: "bottom",
   },
   {
-    title: "Step 5: Shopping Cart",
-    description: "Access your cart here to review and purchase selected items.",
-    targetSelector: "[data-tutorial='cart']",
-    position: "bottom",
+    title: "Step 5: Export & History",
+    description: "Use Export to download your conversation as Markdown or JSON. Use History to open past conversations.",
+    targetSelector: "[data-tutorial='navigation']",
+    position: "right",
   },
 ]
 

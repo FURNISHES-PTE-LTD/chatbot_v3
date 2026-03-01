@@ -9,6 +9,9 @@ import {
   GitBranch,
   LayoutDashboard,
   Trash2,
+  ListChecks,
+  Download,
+  List,
 } from "lucide-react"
 import { DEFAULT_RECENTS } from "@/lib/mock-data"
 import { useAppContext } from "@/lib/contexts/app-context"
@@ -42,7 +45,10 @@ const navigationCategories: { id: string; label: string; items: NavItem[] }[] = 
     label: "DESIGN",
     items: [
       { icon: Sparkles, label: "Discover", id: "discover", expandable: false },
+      { icon: ListChecks, label: "Recommendations", id: "recommendations", expandable: false },
       { icon: GitBranch, label: "Playbook", id: "playbook", expandable: false },
+      { icon: Download, label: "Export", id: "export", expandable: false },
+      { icon: List, label: "History", id: "history", expandable: false },
     ],
   },
 ]

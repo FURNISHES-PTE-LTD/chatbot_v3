@@ -4,30 +4,28 @@ import React from "react"
 import {
   Star,
   Share2,
-  Search,
-  Package,
   FolderOpen,
   MessageSquarePlus,
-  ShoppingCart,
   Clock,
-  TrendingUp,
   LayoutDashboard,
   Sparkles,
   GitBranch,
   Home,
+  Download,
+  List,
+  Package,
 } from "lucide-react"
 import { useAppContext } from "@/lib/contexts/app-context"
 import { useWorkspaceContext } from "@/lib/contexts/workspace-context"
+import { useCurrentConversation } from "@/lib/contexts/current-conversation-context"
 import type { Workspace } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { API_ROUTES } from "@/lib/api"
 import { FilesView } from "./files-view"
 import { DiscoverView } from "./discover-view"
 import { PlaybookView } from "./playbook-view"
-import { SearchView } from "./views/search-view"
-import { CartView } from "./views/cart-view"
-import { CommunityView } from "./views/community-view"
-import { CustomizeView } from "./views/customize-view"
 import { SettingsView } from "./views/settings-view"
+import { HistoryView } from "./views/history-view"
 import { ChatView } from "./views/chat-view"
 import { WorkspaceView } from "./views/workspace-view"
 import { AssistantPickerView } from "./views/assistant-picker"
@@ -45,6 +43,7 @@ export function MainContent({
   onSendToChatFromDiscover,
 }: MainContentProps) {
   const { activeItem, recents = [], onItemClick } = useAppContext()
+  const { conversationId } = useCurrentConversation()
   const {
     currentWorkspace,
     currentProject,
@@ -64,16 +63,15 @@ export function MainContent({
   const getActiveIcon = () => {
     const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
       "new-chat": MessageSquarePlus,
-      search: Search,
       files: FolderOpen,
       discover: Sparkles,
       playbook: GitBranch,
       workspace: LayoutDashboard,
-      cart: ShoppingCart,
       project: Home,
-      community: TrendingUp,
-      customize: Package,
       settings: Star,
+      recommendations: Sparkles,
+      export: Download,
+      history: List,
     }
     const IconComponent =
       currentWorkspace && currentProject
@@ -95,6 +93,9 @@ export function MainContent({
     if (activeItem === "new-chat") return "+ New Chat"
     if (activeItem === "workspace") return "Workspace"
     if (activeItem === "playbook") return "Playbook"
+    if (activeItem === "recommendations") return "Recommendations"
+    if (activeItem === "export") return "Export"
+    if (activeItem === "history") return "History"
     return activeItem
       .split("-")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -125,9 +126,8 @@ export function MainContent({
       )
     }
 
-    if (activeItem === "search") return <SearchView />
     if (activeItem === "files") return <FilesView onEditInChat={onEditInChatFromFiles} />
-    if (activeItem === "discover") return <DiscoverView onSendToChat={onSendToChatFromDiscover} />
+    if (activeItem === "discover" || activeItem === "recommendations") return <DiscoverView onSendToChat={onSendToChatFromDiscover} />
     if (activeItem === "playbook") {
       return (
         <div className="flex flex-col h-full min-h-0 -m-6">
@@ -135,7 +135,59 @@ export function MainContent({
         </div>
       )
     }
-    if (activeItem === "cart") return <CartView />
+    if (activeItem === "export") {
+      return (
+        <div className="p-6">
+          <h1 className="text-base font-semibold text-foreground mb-2">Export</h1>
+          <p className="text-sm text-muted-foreground mb-4">Export your current conversation as Markdown or JSON.</p>
+          {conversationId ? (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  fetch(API_ROUTES.conversationExport(conversationId, "markdown"))
+                    .then((r) => r.blob())
+                    .then((blob) => {
+                      const a = document.createElement("a")
+                      a.href = URL.createObjectURL(blob)
+                      a.download = `conversation-${conversationId.slice(-8)}.md`
+                      a.click()
+                      URL.revokeObjectURL(a.href)
+                    })
+                    .catch(() => {})
+                }}
+                className="px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium hover:bg-muted"
+              >
+                Download as Markdown
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  fetch(API_ROUTES.conversationExport(conversationId))
+                    .then((r) => r.json())
+                    .then((data) => {
+                      const a = document.createElement("a")
+                      a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }))
+                      a.download = `conversation-${conversationId.slice(-8)}.json`
+                      a.click()
+                      URL.revokeObjectURL(a.href)
+                    })
+                    .catch(() => {})
+                }}
+                className="px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium hover:bg-muted"
+              >
+                Download as JSON
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Start a conversation to export it.</p>
+          )}
+        </div>
+      )
+    }
+    if (activeItem === "history") {
+      return <HistoryView onItemClick={onItemClick} />
+    }
 
     switch (activeItem) {
       case "project":
@@ -148,10 +200,6 @@ export function MainContent({
             </div>
           </div>
         )
-      case "community":
-        return <CommunityView />
-      case "customize":
-        return <CustomizeView />
       case "settings":
         return <SettingsView />
       default:
