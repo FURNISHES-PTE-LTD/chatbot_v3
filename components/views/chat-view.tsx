@@ -276,12 +276,56 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                     </div>
                   )}
                   {isUser && (msg.extractions?.length ? (
-                    <div className="flex gap-1 flex-wrap justify-end">
-                      {msg.extractions.map((e, j) => (
-                        <span key={j} className="text-[10px] text-primary bg-primary/5 rounded px-1.5 py-0.5 font-medium border border-primary/10">
-                          ↗ {e.text}
-                        </span>
-                      ))}
+                    <div className="flex flex-col gap-1.5 items-end">
+                      <div className="flex gap-1 flex-wrap justify-end">
+                        {msg.extractions.map((e, j) => (
+                          <span key={j} className="text-[10px] text-primary bg-primary/5 rounded px-1.5 py-0.5 font-medium border border-primary/10">
+                            ↗ {e.text}
+                          </span>
+                        ))}
+                      </div>
+                      {(msg.extractions?.some((e) => e.needsConfirmation)) && currentConvoId && (() => {
+                        const first = msg.extractions?.find((e) => e.needsConfirmation && e.confirmMessage)
+                        return first ? (
+                          <div className="flex flex-col gap-1.5 items-end">
+                            <p className="text-[10px] text-muted-foreground max-w-[85%]">{first.confirmMessage}</p>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (!currentConvoId) return
+                                  for (const e of msg.extractions ?? []) {
+                                    await fetch(`/api/conversations/${currentConvoId}/preferences`, {
+                                      method: "PATCH",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ field: e.field, value: e.text }),
+                                    })
+                                  }
+                                  if (!isDemoChat) {
+                                    setMessagesByKey((prev) => {
+                                      const list = prev[chatKey] || []
+                                      if (i >= list.length) return prev
+                                      const copy = [...list]
+                                      const extractions = (copy[i] as { extractions?: typeof msg.extractions }).extractions?.map((ex) => ({ ...ex, needsConfirmation: false })) ?? []
+                                      ;(copy[i] as { extractions?: typeof msg.extractions }).extractions = extractions
+                                      return { ...prev, [chatKey]: copy }
+                                    })
+                                  }
+                                }}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-600 text-white text-xs font-semibold hover:bg-orange-700 transition-colors cursor-pointer"
+                              >
+                                <Check className="w-3 h-3" /> Looks good
+                              </button>
+                              <button
+                                type="button"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-muted-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer"
+                              >
+                                <Edit3 className="w-3 h-3" /> Adjust
+                              </button>
+                            </div>
+                          </div>
+                        ) : null
+                      })()}
                     </div>
                   ) : (demoMsg as DemoMessage).sources?.length ? (
                     <div className="flex gap-1 flex-wrap justify-end">

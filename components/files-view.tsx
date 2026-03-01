@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Download, Edit3 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { FILES_DATA } from "@/lib/mock-data"
 import { FILE_PALETTES } from "@/lib/theme-colors"
+import { useCurrentConversation } from "@/lib/contexts/current-conversation-context"
 
 export type FileItem = (typeof FILES_DATA)[number]
 
@@ -75,10 +76,23 @@ function FilePreviewLarge({ file }: { file: FileItem }) {
 }
 
 export function FilesView({ onEditInChat }: FilesViewProps) {
+  const { conversationId } = useCurrentConversation()
   const [selected, setSelected] = useState<FileItem | null>(null)
   const [filter, setFilter] = useState<"all" | "image" | "floorplan">("all")
+  const [apiFiles, setApiFiles] = useState<FileItem[]>([])
+  useEffect(() => {
+    if (!conversationId) {
+      setApiFiles([])
+      return
+    }
+    fetch(`/api/conversations/${conversationId}/files`)
+      .then((r) => r.json())
+      .then((list: FileItem[]) => setApiFiles(Array.isArray(list) ? list : []))
+      .catch(() => setApiFiles([]))
+  }, [conversationId])
+  const fileList = apiFiles.length > 0 ? apiFiles : FILES_DATA
   const filtered =
-    filter === "all" ? FILES_DATA : FILES_DATA.filter((f) => f.type === filter)
+    filter === "all" ? fileList : fileList.filter((f) => f.type === filter)
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -91,7 +105,7 @@ export function FilesView({ onEditInChat }: FilesViewProps) {
                 Images, floorplans, and documents from your conversations.
               </p>
             </div>
-            <span className="text-xs text-muted-foreground font-medium">{FILES_DATA.length} files</span>
+            <span className="text-xs text-muted-foreground font-medium">{fileList.length} files</span>
           </div>
 
           <div className="flex gap-2 mb-4">

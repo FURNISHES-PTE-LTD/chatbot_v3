@@ -7,6 +7,8 @@ import { checkRateLimit } from "@/lib/rate-limit"
 import { log } from "@/lib/logger"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { getDomainConfig } from "@/lib/domain-config"
+import { buildContext } from "@/lib/context-builder"
 
 const RequestSchema = z.object({
   conversationId: z.string().optional(),
@@ -55,35 +57,35 @@ export async function POST(req: Request) {
     data: { conversationId: convoId, role: "user", content: message },
   })
 
-  const history = await prisma.message.findMany({
+  const domainConfig = getDomainConfig()
+  const convCfg = domainConfig.conversation ?? {}
+  const maxHistory = convCfg.max_history ?? 50
+
+  const historyRows = await prisma.message.findMany({
     where: { conversationId: convoId },
     orderBy: { createdAt: "asc" },
-    take: 50,
+    take: maxHistory,
+  })
+  const messagesForContext = historyRows.map((m) => ({ role: m.role, content: m.content }))
+
+  let prefRecord: Record<string, string> = preferences ?? {}
+  if (Object.keys(prefRecord).length === 0) {
+    const prefs = await prisma.preference.findMany({ where: { conversationId: convoId } })
+    for (const p of prefs) prefRecord[p.field] = p.value
+  }
+
+  const { systemSuffix, messages } = await buildContext(messagesForContext, prefRecord, {
+    maxContextTokens: convCfg.max_context_tokens,
+    summarizeAfter: convCfg.summarize_after,
   })
 
-  const prefContext = preferences
-    ? Object.entries(preferences)
-        .filter(([, v]) => v)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(", ")
-    : "none gathered yet"
-
-  const basePrompt = `You are Eva, a friendly interior design assistant. You help users plan room designs, choose furniture, select color palettes, and create design briefs.
-
-Current user preferences: ${prefContext}
-
-Guidelines:
-- Be warm, concise, and specific to interior design
-- When the user mentions preferences (room type, style, colors, budget, furniture), acknowledge them naturally
-- Suggest concrete options when possible (specific furniture styles, color combinations, layout ideas)
-- Ask clarifying follow-up questions to refine their design brief
-- Keep responses under 150 words unless the user asks for detail`
+  const basePrompt = (domainConfig.system_prompt || "").trim() + systemSuffix
   const systemPrompt = buildSafeSystemPrompt(basePrompt)
 
   const result = streamText({
     model: openai("gpt-4o-mini"),
     system: systemPrompt,
-    messages: history.map((m) => ({
+    messages: messages.map((m) => ({
       role: m.role as "user" | "assistant" | "system",
       content: m.content,
     })),

@@ -1,0 +1,17 @@
+{
+  "name": "interior_design",
+  "system_prompt": "You are Eva, a friendly interior design assistant. You help users plan room designs, choose furniture, select color palettes, and create design briefs. Extract user preferences from the conversation and respond naturally. When the user mentions preferences (room type, style, colors, budget, furniture), acknowledge them naturally.\n\nGuidelines:\n- Be warm, concise, and specific to interior design\n- Suggest concrete options when possible (specific furniture styles, color combinations, layout ideas)\n- Ask clarifying follow-up questions to refine their design brief\n- Keep responses under 150 words unless the user asks for detail",
+  "fields": [
+    { "id": "roomType", "label": "Room Type", "type": "string", "vocabulary": ["living room", "bedroom", "kitchen", "bathroom", "office"], "suggestions": ["living room", "bedroom", "kitchen"] },
+    { "id": "style", "label": "Design Style", "type": "string", "vocabulary": ["modern", "traditional", "scandinavian", "minimal", "industrial", "minimalist", "contemporary"], "suggestions": ["modern", "scandinavian", "minimal"] },
+    { "id": "color", "label": "Colors", "type": "list" },
+    { "id": "furniture", "label": "Furniture", "type": "list" },
+    { "id": "budget", "label": "Budget", "type": "string" },
+    { "id": "exclusion", "label": "Exclusion", "type": "string" }
+  ],
+  "recommendations": { "enabled": true, "max_items": 10, "include_alternatives": true },
+  "analytics": { "insights_enabled": true, "trends_enabled": true, "export_formats": ["json", "markdown"] },
+  "guardrails": { "moderation_enabled": true, "injection_detection": true, "max_message_length": 5000 },
+  "conversation": { "max_history": 50, "summarize_after": 20, "max_context_tokens": 4000 },
+  "rate_limits": { "requests_per_minute": 30, "session_cost_limit_usd": 2.0 }
+}

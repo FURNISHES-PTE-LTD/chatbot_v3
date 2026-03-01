@@ -7,7 +7,7 @@ import { useCurrentPreferences } from "@/lib/contexts/current-preferences-contex
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { RefreshCw, Lightbulb, Home, DollarSign, Star, ListChecks } from "lucide-react"
+import { RefreshCw, Lightbulb, Home, DollarSign, Star, ListChecks, Download } from "lucide-react"
 
 
 function PreferenceCard({
@@ -187,6 +187,12 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
 
       <div className="flex-1 overflow-y-auto p-3">
           <div className="space-y-3">
+            {/* Progress: X of Y fields filled */}
+            {conversationId && (
+              <div className="text-[10px] text-muted-foreground px-0.5 pb-0.5">
+                {[roomType, budget, designStyle, colorPref, furnitureNeeds].filter(Boolean).length} of 5 fields filled
+              </div>
+            )}
             {/* Brainstorm card */}
             <div className="animate-in fade-in slide-in-from-right-2 duration-200 rounded border border-border bg-muted/30 p-3">
               <div className="flex items-center gap-1.5 mb-2">
@@ -216,6 +222,29 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
                 {brainstormLoading ? "Thinking…" : "Generate ideas"}
               </button>
             </div>
+
+            {conversationId && (
+              <div className="rounded border border-border bg-muted/30 p-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    fetch(`/api/conversations/${conversationId}/export?format=markdown`)
+                      .then((r) => r.blob())
+                      .then((blob) => {
+                        const a = document.createElement("a")
+                        a.href = URL.createObjectURL(blob)
+                        a.download = `conversation-${conversationId.slice(-8)}.md`
+                        a.click()
+                        URL.revokeObjectURL(a.href)
+                      })
+                      .catch(() => {})
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" /> Export
+                </button>
+              </div>
+            )}
 
             <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60 px-0.5 pb-0.5 pt-1">
               Preferences

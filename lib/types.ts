@@ -39,7 +39,13 @@ export interface RecentItem {
 export interface ChatMessage {
   role: "user" | "assistant"
   content: string
-  extractions?: { text: string; field: string; confidence: number }[]
+  extractions?: {
+    text: string
+    field: string
+    confidence: number
+    needsConfirmation?: boolean
+    confirmMessage?: string
+  }[]
   id?: string // DB message id (for feedback)
 }
 

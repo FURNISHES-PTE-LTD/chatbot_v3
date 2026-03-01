@@ -171,7 +171,7 @@ export const INIT_WF_EDGES: WfEdge[] = [
   { id: "e6", from: "brief", to: "review", label: "BRIEF READY" },
 ]
 
-type TraceEntry =
+export type TraceEntry =
   | { time: string; text: string; action?: string }
   | { time: string; userQuote: string; changes?: { field: string; after: string; confidence: number; action: string }[]; reasoning?: string }
 

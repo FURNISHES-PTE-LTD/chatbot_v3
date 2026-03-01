@@ -1,11 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { RotateCcw, RotateCw, Sparkles, Plus, Check, X, ZoomIn, ZoomOut } from "lucide-react"
 import { SectionLabel } from "@/components/shared/section-label"
 import { INIT_WF_NODES, INIT_WF_EDGES, NODE_TRACES } from "@/lib/mock-data"
 import type { WfNode, WfEdge } from "@/lib/mock-data"
+import type { TraceEntry } from "@/lib/mock-data"
 import { NODE_COLORS, STATUS_COLORS, SVG_COLORS } from "@/lib/theme-colors"
+import { useCurrentConversation } from "@/lib/contexts/current-conversation-context"
 import { cn } from "@/lib/utils"
 
 type NodeType = "start" | "process" | "warning" | "end" | "knowledge"
@@ -32,12 +34,37 @@ function TraceBadge({ children, variant = "muted" }: { children: React.ReactNode
 }
 
 export function PlaybookView() {
+  const { conversationId } = useCurrentConversation()
   const [nodes, setNodes] = useState<WfNode[]>(INIT_WF_NODES)
   const [edges, setEdges] = useState<WfEdge[]>(INIT_WF_EDGES)
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [editingBody, setEditingBody] = useState<string | null>(null)
   const [editingEdge, setEditingEdge] = useState<string | null>(null)
   const [zoom, setZoom] = useState(88)
+  const [eventsEntries, setEventsEntries] = useState<TraceEntry[]>([])
+
+  useEffect(() => {
+    if (!conversationId) {
+      setEventsEntries([])
+      return
+    }
+    fetch(`/api/conversations/${conversationId}/events`)
+      .then((r) => r.json())
+      .then((events: Array<{ time: string; field: string; newValue: string; confidence: number; action: string }>) => {
+        const entries: TraceEntry[] = events.map((e) => ({
+          time: new Date(e.time).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+          userQuote: "",
+          changes: [{ field: e.field, after: e.newValue, confidence: Math.round((e.confidence ?? 0) * 100), action: e.action ?? "set" }],
+        }))
+        setEventsEntries(entries)
+      })
+      .catch(() => setEventsEntries([]))
+  }, [conversationId])
+
+  const traceFromEvents = useMemo(
+    () => (eventsEntries.length > 0 ? { entries: eventsEntries } : null),
+    [eventsEntries],
+  )
 
   const nodeColors = NODE_COLORS
   const actionColors = STATUS_COLORS
@@ -60,7 +87,9 @@ export function PlaybookView() {
   const updateEdgeLabel = (id: string, label: string) =>
     setEdges((es) => es.map((e) => (e.id === id ? { ...e, label } : e)))
 
-  const trace = selectedNode ? NODE_TRACES[selectedNode] : null
+  const trace = selectedNode
+    ? (traceFromEvents && (selectedNode === "collect" || selectedNode === "detect") ? traceFromEvents : NODE_TRACES[selectedNode])
+    : null
   const selNodeData = nodes.find((n) => n.id === selectedNode)
 
   return (
