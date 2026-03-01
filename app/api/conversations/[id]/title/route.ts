@@ -19,6 +19,7 @@ export async function POST(
   const { text: title } = await generateText({
     model: openai("gpt-4o-mini"),
     prompt: `Generate a 4-6 word title for this interior design conversation. Return ONLY the title, no quotes:\n\n${preview}`,
+    maxRetries: 3,
   })
 
   const trimmed = title.trim().slice(0, 60)

@@ -9,6 +9,11 @@ import { detectNegations, mapNegatedTermsToFields } from "@/lib/extraction/negat
 import { extractIndirectPreferences } from "@/lib/extraction/semantic-inference"
 import { checkContradiction } from "@/lib/extraction/contradiction"
 import { normalizeValue } from "@/lib/extraction/normalize"
+import {
+  detectUncertainty,
+  adjustConfidenceForUncertainty,
+  UncertaintyLevel,
+} from "@/lib/extraction/uncertainty"
 import { getOpenAIKey, OPENAI_KEY_MISSING_MESSAGE } from "@/lib/openai"
 
 function getExtractionFieldEnum() {
@@ -79,6 +84,7 @@ Message: "${expandedContent}"`
     model: openai("gpt-4o-mini"),
     schema: zodSchema(ExtractionSchema),
     prompt: enrichedPrompt,
+    maxRetries: 3,
   })
 
   let entities: Array<ExtractionEntity & { needsConfirmation?: boolean; confirmMessage?: string }> =
@@ -105,6 +111,18 @@ Message: "${expandedContent}"`
   for (const entity of entities) {
     const [normalized, _conf] = normalizeValue(entity.text)
     entity.text = Array.isArray(normalized) ? normalized.join(", ") : normalized
+  }
+
+  // 4b. Uncertainty: adjust confidence or skip extraction for exploratory messages
+  const uncertainty = detectUncertainty(content)
+  if (uncertainty.hasUncertainty && uncertainty.level !== null) {
+    for (const entity of entities) {
+      entity.confidence = adjustConfidenceForUncertainty(
+        entity.confidence,
+        uncertainty.level,
+        uncertainty.confidenceAdjustment
+      )
+    }
   }
 
   // 5. Load current preferences and run contradiction check
@@ -136,6 +154,8 @@ Message: "${expandedContent}"`
 
   for (const entity of entities) {
     if (entity.needsConfirmation) continue
+    // Skip persisting when uncertainty is exploratory (confidence forced to 0)
+    if (uncertainty.level === UncertaintyLevel.EXPLORATORY || entity.confidence <= 0) continue
     const existing = currentPrefs[entity.field]
     const changeType = existing ? "update" : "set"
     await prisma.preferenceChange.create({

@@ -46,6 +46,7 @@ Preferences: ${prefs}
 
 Conversation:
 ${transcript}`,
+    maxRetries: 3,
   })
 
   return Response.json({ summary: text.trim() })

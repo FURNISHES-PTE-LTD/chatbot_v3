@@ -2,7 +2,7 @@ import { streamText } from "ai"
 import { openai } from "@ai-sdk/openai"
 import { prisma } from "@/lib/db"
 import { z } from "zod"
-import { validateInput, buildSafeSystemPrompt } from "@/lib/guardrails"
+import { validateInput, buildSafeSystemPrompt, sanitizeOutput } from "@/lib/guardrails"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { log } from "@/lib/logger"
 import { getServerSession } from "next-auth"
@@ -87,11 +87,13 @@ export async function POST(req: Request) {
       role: m.role as "user" | "assistant" | "system",
       content: m.content,
     })),
+    maxRetries: 3,
   })
 
   result.text.then(async (fullText) => {
+    const sanitized = sanitizeOutput(fullText)
     await prisma.message.create({
-      data: { conversationId: convoId!, role: "assistant", content: fullText },
+      data: { conversationId: convoId!, role: "assistant", content: sanitized },
     })
     log({
       level: "info",

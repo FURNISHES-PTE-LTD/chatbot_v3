@@ -54,6 +54,7 @@ export async function GET(
 
 Conversation:
 ${transcript}`,
+    maxRetries: 3,
   })
 
   return Response.json(object)

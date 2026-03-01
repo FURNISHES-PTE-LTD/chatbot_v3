@@ -48,6 +48,7 @@ export async function POST(req: Request) {
 
 Conversation:
 ${transcript}`,
+    maxRetries: 3,
   })
 
   return Response.json({ suggestions: object.suggestions.slice(0, 8) })
