@@ -20,6 +20,8 @@ interface ChatContextValue {
   isStreamingForKey: (key: string) => boolean
   isStreaming: boolean
   conversationIds: Record<string, string>
+  /** Clear in-memory data for a chat key (e.g. when conversation is deleted). */
+  removeConversationData: (chatKey: string) => void
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null)
@@ -43,6 +45,19 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
   const [streamingKeys, setStreamingKeys] = useState<Set<string>>(new Set())
   const [conversationIds, setConversationIds] = useState<Record<string, string>>({})
   const { preferences: currentPreferences } = useCurrentPreferences()
+
+  const removeConversationData = useCallback((chatKey: string) => {
+    setConversationIds((prev) => {
+      const next = { ...prev }
+      delete next[chatKey]
+      return next
+    })
+    setMessagesByKey((prev) => {
+      const next = { ...prev }
+      delete next[chatKey]
+      return next
+    })
+  }, [])
 
   const pendingMessage = controlledPending !== undefined ? controlledPending : internalPending
   const setPendingMessageState = controlledSetPending ?? setInternalPending
@@ -231,6 +246,7 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
     isStreamingForKey: (k) => streamingKeys.has(k),
     isStreaming: streamingKeys.size > 0,
     conversationIds,
+    removeConversationData,
   }
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>

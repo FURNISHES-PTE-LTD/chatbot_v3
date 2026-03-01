@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    unoptimized: true,
+    // Use next/image optimization. Add remotePatterns for external domains as needed.
+    remotePatterns: [],
   },
   async headers() {
     return [

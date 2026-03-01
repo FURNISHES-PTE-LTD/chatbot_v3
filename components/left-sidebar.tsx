@@ -14,6 +14,7 @@ import {
   List,
 } from "lucide-react"
 import { useAppContext } from "@/lib/contexts/app-context"
+import { useChatContext } from "@/lib/contexts/chat-context"
 import { toast } from "sonner"
 import { apiDelete, API_ROUTES } from "@/lib/api"
 import { IconButton } from "@/components/shared/icon-button"
@@ -75,6 +76,7 @@ const WELCOME_TEXT = "Welcome back !"
 
 export const LeftSidebar = memo(function LeftSidebar({ onHelpClick, isOverlay, onCloseMobileMenu }: LeftSidebarProps) {
   const { activeItem, recents = [], onItemClick, removeRecent } = useAppContext()
+  const { removeConversationData } = useChatContext()
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null)
 
   const handleItemClick = (id: string, label: string) => {
@@ -87,9 +89,13 @@ export const LeftSidebar = memo(function LeftSidebar({ onHelpClick, isOverlay, o
     const convoId = deleteTarget.id.startsWith("convo-") ? deleteTarget.id.replace(/^convo-/, "") : null
     if (convoId) {
       apiDelete(API_ROUTES.conversation(convoId))
-        .then(() => removeRecent(deleteTarget.id))
+        .then(() => {
+          removeConversationData(deleteTarget.id)
+          removeRecent(deleteTarget.id)
+        })
         .catch(() => toast.error("Could not delete conversation"))
     } else {
+      removeConversationData(deleteTarget.id)
       removeRecent(deleteTarget.id)
     }
     setDeleteTarget(null)
