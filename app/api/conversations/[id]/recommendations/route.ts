@@ -15,7 +15,7 @@ export async function GET(
   const preferences = await getPreferencesAsRecord(prisma, id)
 
   const domainConfig = getDomainConfig()
-  const recCfg = domainConfig.recommendations ?? {}
+  const recCfg = (domainConfig.recommendations ?? {}) as { max_items?: number; enabled?: boolean }
   const maxItems = recCfg.max_items ?? 10
   if (recCfg.enabled === false) {
     return Response.json({ items: [], suggestions: [], budget_breakdown: {} })

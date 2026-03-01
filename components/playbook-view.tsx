@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { RotateCcw, RotateCw, Sparkles, Plus, Check, X, ZoomIn, ZoomOut } from "lucide-react"
+import { RotateCcw, RotateCw, Sparkles, Plus, Check, X, ZoomIn, ZoomOut, Loader2 } from "lucide-react"
 import { SectionLabel } from "@/components/shared/section-label"
 import { INIT_WF_NODES, INIT_WF_EDGES, NODE_TRACES } from "@/lib/mock-data"
 import type { WfNode, WfEdge } from "@/lib/mock-data"
@@ -43,12 +43,15 @@ export function PlaybookView() {
   const [editingEdge, setEditingEdge] = useState<string | null>(null)
   const [zoom, setZoom] = useState(88)
   const [eventsEntries, setEventsEntries] = useState<TraceEntry[]>([])
+  const [eventsLoading, setEventsLoading] = useState(true)
 
   useEffect(() => {
     if (!conversationId) {
+      setEventsLoading(false)
       setEventsEntries([])
       return
     }
+    setEventsLoading(true)
     apiGet<Array<{ time: string; field: string; newValue: string; confidence: number; action: string }>>(API_ROUTES.conversationEvents(conversationId))
       .then((events) => {
         const entries: TraceEntry[] = events.map((e) => ({
@@ -59,6 +62,7 @@ export function PlaybookView() {
         setEventsEntries(entries)
       })
       .catch(() => setEventsEntries([]))
+      .finally(() => setEventsLoading(false))
   }, [conversationId])
 
   const traceFromEvents = useMemo(
@@ -91,6 +95,14 @@ export function PlaybookView() {
     ? (traceFromEvents && (selectedNode === "collect" || selectedNode === "detect") ? traceFromEvents : NODE_TRACES[selectedNode])
     : null
   const selNodeData = nodes.find((n) => n.id === selectedNode)
+
+  if (conversationId && eventsLoading) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 flex overflow-hidden bg-card">
@@ -241,7 +253,7 @@ export function PlaybookView() {
                 )
               })}
               {nodes.map((node) => {
-                const c = nodeColors[node.type] || nodeColors.process
+                const c = nodeColors[node.type as keyof typeof nodeColors] || nodeColors.process
                 const isSel = selectedNode === node.id
                 const isKb = node.type === "knowledge"
                 return (
@@ -436,7 +448,7 @@ export function PlaybookView() {
                             <span className="text-muted-foreground">User: </span>&ldquo;{entry.userQuote}&rdquo;
                           </div>
                           {entry.changes?.map((ch, j) => {
-                            const ac = actionColors[ch.action] || { c: "#7A756E", bg: "#F5F0EA" }
+                            const ac = actionColors[ch.action as keyof typeof actionColors] || { c: "#7A756E", bg: "#F5F0EA" }
                             return (
                               <div key={j} className="flex items-center gap-1.5 flex-wrap mb-1">
                                 <span className="text-[10px] font-semibold text-foreground">{ch.field}</span>

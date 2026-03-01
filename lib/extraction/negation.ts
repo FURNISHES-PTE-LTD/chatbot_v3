@@ -104,7 +104,8 @@ export function detectNegations(message: string): NegationResult {
     result.negatedTerms = terms
     result.negationType = type
     result.confidence = confidence
-    result.negatedFields = mapNegatedTermsToFields(terms)
+    const mapped = mapNegatedTermsToFields(terms)
+    result.negatedFields = Object.keys(mapped).filter((k) => mapped[k].length > 0)
   }
 
   for (const re of EXCEPTION_PATTERNS) {

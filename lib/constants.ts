@@ -15,9 +15,6 @@ export const VIEW_IDS: Record<string, ViewId> = {
   LANDING: "landing",
 } as const
 
-// Demo / development
-export const DEMO_RECENT_ID = "recent-demo"
-
 // Timing
 export const TYPING_SPEED_MS = 90
 export const AI_RESPONSE_DELAY_MS = 400

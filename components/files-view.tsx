@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Download, Edit3 } from "lucide-react"
+import { Download, Edit3, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { FILES_DATA } from "@/lib/mock-data"
@@ -81,18 +81,30 @@ export function FilesView({ onEditInChat }: FilesViewProps) {
   const [selected, setSelected] = useState<FileItem | null>(null)
   const [filter, setFilter] = useState<"all" | "image" | "floorplan">("all")
   const [apiFiles, setApiFiles] = useState<FileItem[]>([])
+  const [filesLoading, setFilesLoading] = useState(true)
   useEffect(() => {
     if (!conversationId) {
+      setFilesLoading(false)
       setApiFiles([])
       return
     }
+    setFilesLoading(true)
     apiGet<FileItem[]>(API_ROUTES.conversationFiles(conversationId))
       .then((list) => setApiFiles(Array.isArray(list) ? list : []))
       .catch(() => setApiFiles([]))
+      .finally(() => setFilesLoading(false))
   }, [conversationId])
   const fileList = apiFiles.length > 0 ? apiFiles : FILES_DATA
   const filtered =
     filter === "all" ? fileList : fileList.filter((f) => f.type === filter)
+
+  if (conversationId && filesLoading) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 overflow-y-auto">

@@ -3,9 +3,9 @@ import type { Workspace, Project } from "./types"
 import type { RecentItem } from "./types"
 import type { Preference, PreferenceStatus } from "./types"
 
-// Demo chat messages (extended shape for UI)
+// Demo chat messages (extended shape for UI) — kept for reference; demo mode removed from app.
 export type DemoMessage = ChatMessage & {
-  id?: number
+  id?: string
   sources?: { text: string; field: string }[]
   extraction?: { field: string; value: string }
   type?: "text" | "taskCard" | "feedback"
@@ -15,15 +15,15 @@ export type DemoMessage = ChatMessage & {
 }
 
 export const MOCK_DEMO_MESSAGES: DemoMessage[] = [
-  { id: 1, role: "assistant", content: "Good morning! I'm Eva, your design planning assistant. What room are you working on today?" },
-  { id: 2, role: "user", content: "I'm thinking about redoing my living room", sources: [{ text: "living room", field: "roomType" }] },
-  { id: 3, role: "assistant", content: "Great — I've noted <hl>living room</hl> as your project space. Do you have a style direction in mind?", extraction: { field: "Room Type", value: "Living Room" } },
-  { id: 4, role: "user", content: "Something minimalist, warm tones, big comfy sofa", sources: [{ text: "minimalist", field: "style" }, { text: "warm tones", field: "color" }, { text: "sofa", field: "furniture" }] },
-  { id: 5, role: "assistant", content: "Capturing <hl>minimalist</hl> as your style and <hl>sofa</hl> as a must-have. Budget range?", extraction: { field: "Style + Furniture", value: "Minimalist, Sofa" } },
-  { id: 6, role: "user", content: "Around 4k, nothing farmhouse please." },
-  { id: 7, role: "assistant", content: "Got it — <hl>$4,000</hl> budget, avoiding <hl>farmhouse</hl>. I've updated your brief.", extraction: { field: "Budget + Exclusion", value: "$4,000 / −Farmhouse" } },
-  { id: 8, role: "assistant", type: "taskCard", content: "", taskText: "Living Room Design Brief — style, budget, furniture captured", taskStatus: "complete", bookmarked: true },
-  { id: 9, role: "assistant", type: "feedback", content: "Does this look right? You can adjust the layout or add more furniture." },
+  { id: "1", role: "assistant", content: "Good morning! I'm Eva, your design planning assistant. What room are you working on today?" },
+  { id: "2", role: "user", content: "I'm thinking about redoing my living room", sources: [{ text: "living room", field: "roomType" }] },
+  { id: "3", role: "assistant", content: "Great — I've noted <hl>living room</hl> as your project space. Do you have a style direction in mind?", extraction: { field: "Room Type", value: "Living Room" } },
+  { id: "4", role: "user", content: "Something minimalist, warm tones, big comfy sofa", sources: [{ text: "minimalist", field: "style" }, { text: "warm tones", field: "color" }, { text: "sofa", field: "furniture" }] },
+  { id: "5", role: "assistant", content: "Capturing <hl>minimalist</hl> as your style and <hl>sofa</hl> as a must-have. Budget range?", extraction: { field: "Style + Furniture", value: "Minimalist, Sofa" } },
+  { id: "6", role: "user", content: "Around 4k, nothing farmhouse please." },
+  { id: "7", role: "assistant", content: "Got it — <hl>$4,000</hl> budget, avoiding <hl>farmhouse</hl>. I've updated your brief.", extraction: { field: "Budget + Exclusion", value: "$4,000 / −Farmhouse" } },
+  { id: "8", role: "assistant", type: "taskCard", content: "", taskText: "Living Room Design Brief — style, budget, furniture captured", taskStatus: "complete", bookmarked: true },
+  { id: "9", role: "assistant", type: "feedback", content: "Does this look right? You can adjust the layout or add more furniture." },
 ]
 
 export const CHAT_SUGGESTION_CARDS = [

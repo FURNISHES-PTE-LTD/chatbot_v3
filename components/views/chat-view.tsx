@@ -2,9 +2,7 @@
 
 import { useEffect, useState, useRef } from "react"
 import { MessageSquarePlus, Send, Paperclip, Lightbulb, Check, Bookmark, Edit3, Home, Briefcase, Moon, Sun, ThumbsUp, ThumbsDown } from "lucide-react"
-import { DEMO_RECENT_ID } from "@/lib/constants"
-import { MOCK_DEMO_MESSAGES, CHAT_SUGGESTION_CARDS } from "@/lib/mock-data"
-import type { DemoMessage } from "@/lib/mock-data"
+import { CHAT_SUGGESTION_CARDS } from "@/lib/mock-data"
 import { useAppContext } from "@/lib/contexts/app-context"
 import { useChatContext } from "@/lib/contexts/chat-context"
 import { useCurrentConversation } from "@/lib/contexts/current-conversation-context"
@@ -12,6 +10,7 @@ import { parseHighlightedContent } from "@/lib/parse-highlights"
 import type { Workspace, Project } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { apiPost, apiPatch, API_ROUTES } from "@/lib/api"
+import { toast } from "sonner"
 import { ChatBubble } from "@/components/chat/chat-bubble"
 import { ChatAvatar } from "@/components/chat/chat-avatar"
 import { Input } from "@/components/ui/input"
@@ -31,6 +30,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
   const { activeItem } = useAppContext()
   const {
     messagesByKey,
+    setMessagesByKey,
     sendMessage,
     loadConversation,
     inputValue,
@@ -49,10 +49,10 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
         ? activeItem
         : "default"
   const chatMessages = messagesByKey[chatKey] || []
-  const isDemoChat = activeItem === DEMO_RECENT_ID
-  const messagesToShow = isDemoChat ? MOCK_DEMO_MESSAGES : chatMessages
+  const messagesToShow = chatMessages
   const currentConvoId = conversationIds[chatKey] ?? (chatKey.startsWith("convo-") ? chatKey.replace("convo-", "") : null)
   const [feedbackSent, setFeedbackSent] = useState<Record<string, "positive" | "negative">>({})
+  const [adjustState, setAdjustState] = useState<{ messageIndex: number; field: string; value: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [suggestions, setSuggestions] = useState<string[]>([
     "Mood image",
@@ -95,7 +95,6 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
 
   const handleSendChatMessage = () => {
     if (!inputValue.trim()) return
-    if (isDemoChat) return
     sendMessage(chatKey, inputValue.trim())
     setInputValue("")
   }
@@ -171,50 +170,13 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
           )
         ) : (
           messagesToShow.map((msg, i) => {
-            const demoMsg = msg as DemoMessage
-            if (demoMsg.type === "taskCard") {
-              return (
-                <div key={demoMsg.id ?? i} className="flex gap-2.5">
-                  <ChatAvatar role="assistant" initial="E" size="md" />
-                  <div className="rounded-lg px-3 py-2 max-w-[85%] text-sm bg-card border border-border flex items-start gap-2.5">
-                    <div className={cn("w-5 h-5 rounded-full mt-0.5 flex-shrink-0 flex items-center justify-center", demoMsg.taskStatus === "complete" ? "bg-orange-100" : "bg-primary/10")}>
-                      <Check className={cn("w-3 h-3", demoMsg.taskStatus === "complete" ? "text-orange-600" : "text-primary")} />
-                    </div>
-                    <span className="flex-1 text-foreground leading-relaxed">{demoMsg.taskText}</span>
-                    <button type="button" className="p-0 bg-transparent border-none cursor-pointer mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors">
-                      <Bookmark className={cn("w-4 h-4", demoMsg.bookmarked && "fill-primary text-primary")} />
-                    </button>
-                  </div>
-                </div>
-              )
-            }
-            if (demoMsg.type === "feedback") {
-              return (
-                <div key={demoMsg.id ?? i} className="flex gap-2.5">
-                  <ChatAvatar role="assistant" initial="E" size="md" />
-                  <div className="flex flex-col gap-2 max-w-[85%]">
-                    <ChatBubble role="assistant" size="md">
-                      {demoMsg.content}
-                    </ChatBubble>
-                    <div className="flex gap-2">
-                      <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-600 text-white text-xs font-semibold hover:bg-orange-700 transition-colors cursor-pointer">
-                        <Check className="w-3 h-3" /> Looks good
-                      </button>
-                      <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-muted-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer">
-                        <Edit3 className="w-3 h-3" /> Adjust
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )
-            }
             const isUser = msg.role === "user"
             const messageId = (msg as { id?: string }).id
             const hasFeedback = messageId && !isUser
             const sent = messageId ? feedbackSent[messageId] : null
             return (
               <div
-                key={demoMsg.id ?? messageId ?? i}
+                key={messageId ?? i}
                 className={cn(
                   "flex gap-2.5",
                   isUser ? "flex-row-reverse" : "",
@@ -225,12 +187,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                   <ChatBubble role={isUser ? "user" : "assistant"} size="md">
                     {isUser ? msg.content : parseHighlightedContent(msg.content)}
                   </ChatBubble>
-                  {!isUser && demoMsg.extraction && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 border border-orange-100 text-xs text-orange-700 font-medium w-fit">
-                      <Check className="w-3 h-3 text-orange-500" /> <span className="text-orange-600 font-normal">Captured:</span> {demoMsg.extraction.value}
-                    </div>
-                  )}
-                  {!isUser && !isDemoChat && (() => {
+                  {!isUser && (() => {
                     let prevUser: (typeof messagesToShow)[number] | undefined
                     for (let j = i - 1; j >= 0; j--) {
                       if (messagesToShow[j].role === "user") {
@@ -292,18 +249,66 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                       </div>
                       {(msg.extractions?.some((e) => e.needsConfirmation)) && currentConvoId && (() => {
                         const first = msg.extractions?.find((e) => e.needsConfirmation && e.confirmMessage)
-                        return first ? (
+                        if (!first) return null
+                        const isAdjusting = adjustState?.messageIndex === i && adjustState?.field === first.field
+                        return (
                           <div className="flex flex-col gap-1.5 items-end">
                             <p className="text-[10px] text-muted-foreground max-w-[85%]">{first.confirmMessage}</p>
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  if (!currentConvoId) return
-                                  for (const e of msg.extractions ?? []) {
-                                    await apiPatch(API_ROUTES.conversationPreferences(currentConvoId), { field: e.field, value: e.text })
-                                  }
-                                  if (!isDemoChat) {
+                            {isAdjusting ? (
+                              <div className="flex flex-col gap-1.5 items-end w-full max-w-[85%]">
+                                <Input
+                                  value={adjustState.value}
+                                  onChange={(e) => setAdjustState((prev) => prev ? { ...prev, value: e.target.value } : null)}
+                                  className="h-8 text-xs"
+                                  placeholder={first.text}
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      if (!currentConvoId || !adjustState || adjustState.value.trim() === "") {
+                                        setAdjustState(null)
+                                        return
+                                      }
+                                      await apiPatch(API_ROUTES.conversationPreferences(currentConvoId), {
+                                        field: adjustState.field,
+                                        value: adjustState.value.trim(),
+                                      })
+                                      setMessagesByKey((prev) => {
+                                        const list = prev[chatKey] || []
+                                        if (i >= list.length) return prev
+                                        const copy = [...list]
+                                        const extractions = (copy[i] as { extractions?: typeof msg.extractions }).extractions?.map((ex) =>
+                                          ex.field === adjustState.field ? { ...ex, needsConfirmation: false, text: adjustState.value.trim() } : { ...ex, needsConfirmation: false }
+                                        ) ?? []
+                                        ;(copy[i] as { extractions?: typeof msg.extractions }).extractions = extractions
+                                        return { ...prev, [chatKey]: copy }
+                                      })
+                                      toast.success(`Preference updated: ${adjustState.field}`)
+                                      setAdjustState(null)
+                                    }}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-600 text-white text-xs font-semibold hover:bg-orange-700 transition-colors cursor-pointer"
+                                  >
+                                    <Check className="w-3 h-3" /> Save
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setAdjustState(null)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-muted-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!currentConvoId) return
+                                    for (const e of msg.extractions ?? []) {
+                                      await apiPatch(API_ROUTES.conversationPreferences(currentConvoId), { field: e.field, value: e.text })
+                                    }
                                     setMessagesByKey((prev) => {
                                       const list = prev[chatKey] || []
                                       if (i >= list.length) return prev
@@ -312,30 +317,24 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                                       ;(copy[i] as { extractions?: typeof msg.extractions }).extractions = extractions
                                       return { ...prev, [chatKey]: copy }
                                     })
-                                  }
-                                }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-600 text-white text-xs font-semibold hover:bg-orange-700 transition-colors cursor-pointer"
-                              >
-                                <Check className="w-3 h-3" /> Looks good
-                              </button>
-                              <button
-                                type="button"
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-muted-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer"
-                              >
-                                <Edit3 className="w-3 h-3" /> Adjust
-                              </button>
-                            </div>
+                                    toast.success("Preferences confirmed")
+                                  }}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-600 text-white text-xs font-semibold hover:bg-orange-700 transition-colors cursor-pointer"
+                                >
+                                  <Check className="w-3 h-3" /> Looks good
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setAdjustState({ messageIndex: i, field: first.field, value: first.text })}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-muted-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer"
+                                >
+                                  <Edit3 className="w-3 h-3" /> Adjust
+                                </button>
+                              </div>
+                            )}
                           </div>
-                        ) : null
+                        )
                       })()}
-                    </div>
-                  ) : (demoMsg as DemoMessage).sources?.length ? (
-                    <div className="flex gap-1 flex-wrap justify-end">
-                      {(demoMsg as DemoMessage).sources!.map((s, j) => (
-                        <span key={j} className="text-[10px] text-primary bg-primary/5 rounded px-1.5 py-0.5 font-medium border border-primary/10">
-                          ↗ {s.text}
-                        </span>
-                      ))}
                     </div>
                   ) : null)}
                 </div>

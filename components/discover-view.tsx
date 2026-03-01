@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Sparkles, ChevronRight, Link2, Lightbulb, Compass, ListChecks, Hash, Check, MessageCircle } from "lucide-react"
+import { Sparkles, ChevronRight, Link2, Lightbulb, Compass, ListChecks, Hash, Check, MessageCircle, Loader2 } from "lucide-react"
 import { SectionLabel } from "@/components/shared/section-label"
 import { KEY_INSIGHTS, TOPICS, RECOMMENDATIONS, PREFERENCES, EXPLORE_NEXT } from "@/lib/mock-data"
 import { PREFERENCE_STATUS } from "@/lib/theme-colors"
 import { useCurrentConversation } from "@/lib/contexts/current-conversation-context"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 import { apiGet, API_ROUTES } from "@/lib/api"
 
 interface InsightsData {
@@ -14,6 +15,19 @@ interface InsightsData {
   topics: string[]
   recommendations: string[]
   exploreNext: string[]
+}
+
+interface RecommendationItem {
+  name: string
+  category: string
+  why_it_fits: string
+  estimated_price?: number | null
+}
+
+interface RecommendationsData {
+  items: RecommendationItem[]
+  suggestions: string[]
+  budget_breakdown: Record<string, { amount?: number; range?: string; notes?: string }>
 }
 
 function StatusDot({ status, size = "sm" }: { status: string; size?: "sm" | "md" }) {
@@ -45,6 +59,8 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
   const [configFields, setConfigFields] = useState<{ id: string; label: string }[]>([])
   const [insights, setInsights] = useState<InsightsData | null>(null)
   const [prefs, setPrefs] = useState<{ field: string; value: string; confidence: number; status: string }[]>([])
+  const [insightsLoading, setInsightsLoading] = useState(true)
+  const [recommendationsData, setRecommendationsData] = useState<RecommendationsData | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [checkedRecommendations, setCheckedRecommendations] = useState<Set<string>>(new Set())
 
@@ -56,17 +72,31 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
 
   useEffect(() => {
     if (!conversationId) {
+      setInsightsLoading(false)
       setInsights(null)
       setPrefs([])
       return
     }
+    setInsightsLoading(true)
     Promise.all([
       apiGet<InsightsData>(API_ROUTES.conversationInsights(conversationId)),
       apiGet<{ field: string; value: string; confidence: number; status: string }[]>(API_ROUTES.conversationPreferences(conversationId)),
     ]).then(([ins, prefsList]) => {
       setInsights(ins)
       setPrefs(prefsList)
-    }).catch(() => {})
+    }).catch(() => {
+      toast.error("Could not load insights")
+    }).finally(() => setInsightsLoading(false))
+  }, [conversationId])
+
+  useEffect(() => {
+    if (!conversationId) {
+      setRecommendationsData(null)
+      return
+    }
+    apiGet<RecommendationsData>(API_ROUTES.conversationRecommendations(conversationId))
+      .then((data) => setRecommendationsData(data))
+      .catch(() => setRecommendationsData(null))
   }, [conversationId])
 
   const getFieldLabel = (fieldId: string) =>
@@ -98,6 +128,14 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
     explore: { color: "text-violet-600", bg: "bg-violet-50", label: "Explore" },
     idea: { color: "text-primary", bg: "bg-primary/10", label: "Idea" },
     furniture: { color: "text-blue-600", bg: "bg-blue-50", label: "Furniture" },
+  }
+
+  if (conversationId && insightsLoading) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+      </div>
+    )
   }
 
   return (
@@ -206,7 +244,8 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
 
       <div className="flex flex-col gap-4">
         {(prefs.length ? prefs.map((p) => ({ id: p.field, label: getFieldLabel(p.field), type: p.field, confidence: p.confidence, status: p.status, connections: [] as string[], suggestions: [] as { text: string; type: string }[] })) : PREFERENCES).map((pref) => {
-          const t = typeStyles[pref.type] ?? typeStyles.style
+                      const tRaw = pref.type ? typeStyles[pref.type as keyof typeof typeStyles] : undefined
+            const t: { color: string; bg: string; border: string } = tRaw ?? typeStyles.style
           const isExp = expanded === pref.id
           return (
             <div
@@ -340,6 +379,68 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
             </button>
           ))}
         </div>
+
+        {conversationId && recommendationsData && (recommendationsData.items?.length > 0 || Object.keys(recommendationsData.budget_breakdown ?? {}).length > 0) && (
+          <div className="rounded-xl border border-border bg-card p-5 flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <ListChecks className="w-4 h-4 text-primary" />
+              <span className="text-base font-semibold text-foreground">Product recommendations</span>
+            </div>
+            {recommendationsData.items?.length > 0 && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {recommendationsData.items.map((item, i) => (
+                  <div
+                    key={i}
+                    className="rounded-lg border border-border p-4 flex flex-col gap-2 hover:border-primary/30 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-sm font-semibold text-foreground">{item.name}</span>
+                      {item.estimated_price != null && (
+                        <span className="text-xs font-medium text-primary shrink-0">
+                          ${item.estimated_price}
+                        </span>
+                      )}
+                    </div>
+                    {item.category && (
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        {item.category}
+                      </span>
+                    )}
+                    <p className="text-xs text-muted-foreground leading-relaxed">{item.why_it_fits}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {recommendationsData.suggestions?.length > 0 && (
+              <div>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Suggestions</span>
+                <ul className="mt-1.5 flex flex-col gap-1">
+                  {recommendationsData.suggestions.map((s, i) => (
+                    <li key={i} className="text-xs text-foreground">{s}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {recommendationsData.budget_breakdown && Object.keys(recommendationsData.budget_breakdown).length > 0 && (
+              <div className="rounded-lg bg-muted/30 border border-border p-4">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Budget breakdown</span>
+                <dl className="mt-2 space-y-1.5">
+                  {Object.entries(recommendationsData.budget_breakdown).map(([category, val]) => (
+                    <div key={category} className="flex justify-between text-xs">
+                      <dt className="text-foreground font-medium capitalize">{category}</dt>
+                      <dd className="text-muted-foreground">
+                        {typeof val === "object" && val !== null
+                          ? (val as { amount?: number; range?: string; notes?: string }).range ??
+                            ((val as { amount?: number }).amount != null ? `$${(val as { amount: number }).amount}` : "")
+                          : String(val)}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

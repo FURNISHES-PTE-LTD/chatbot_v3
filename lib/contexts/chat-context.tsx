@@ -1,6 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useState, useCallback } from "react"
+import { toast } from "sonner"
 import type { ChatMessage } from "@/lib/types"
 import { AI_RESPONSE_DELAY_MS } from "@/lib/constants"
 import { useCurrentPreferences } from "@/lib/contexts/current-preferences-context"
@@ -8,10 +9,11 @@ import { apiGet, apiPost, API_ROUTES } from "@/lib/api"
 
 interface ChatContextValue {
   messagesByKey: Record<string, ChatMessage[]>
+  setMessagesByKey: React.Dispatch<React.SetStateAction<Record<string, ChatMessage[]>>>
   sendMessage: (key: string, userContent: string, assistantReplyOverride?: string) => void
   loadConversation: (chatKey: string, dbConversationId: string) => Promise<void>
   inputValue: string
-  setInputValue: (value: string) => void
+  setInputValue: React.Dispatch<React.SetStateAction<string>>
   pendingMessage: string | null
   setPendingMessage: (value: string | null) => void
   clearPendingMessage: () => void
@@ -82,6 +84,9 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
           })
             .then((data) => {
               if (!data.entities?.length) return
+              data.entities?.forEach((e: { field: string; text: string }) => {
+                toast.success(`Captured: ${e.field} → ${e.text}`)
+              })
               setMessagesByKey((prev) => {
                 const list = prev[key] || []
                 const lastUserIdx = list.map((m) => m.role).lastIndexOf("user")
@@ -162,6 +167,7 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
         const msg = isNetwork
           ? "I can't reach the server right now. Check your connection and try again."
           : "Something went wrong. Please try again."
+        toast.error(msg)
         setMessagesByKey((prev) => {
           const list = prev[key] || []
           const last = list[list.length - 1]
@@ -199,6 +205,7 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
 
   const value: ChatContextValue = {
     messagesByKey,
+    setMessagesByKey,
     sendMessage,
     loadConversation,
     inputValue,

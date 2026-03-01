@@ -8,6 +8,7 @@ interface AppContextValue {
   setActiveItem: (id: string) => void
   recents: RecentItem[]
   addRecent: (item: RecentItem) => void
+  removeRecent: (id: string) => void
   onItemClick: (id: string, label: string) => void
   onConversationTitleGenerated?: (oldRecentId: string, convoId: string, title: string) => void
 }

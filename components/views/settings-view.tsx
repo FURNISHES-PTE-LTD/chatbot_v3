@@ -1,8 +1,11 @@
 "use client"
 
+import { useTheme } from "next-themes"
 import { Switch } from "@/components/ui/switch"
 
 export function SettingsView() {
+  const { theme, setTheme } = useTheme()
+
   return (
     <div className="h-full overflow-y-auto p-6">
       <h1 className="text-xl font-semibold text-foreground mb-6">Settings</h1>
@@ -16,18 +19,22 @@ export function SettingsView() {
                 <p className="text-sm font-medium text-foreground">Theme</p>
                 <p className="text-xs text-muted-foreground">Choose your interface theme</p>
               </div>
-              <select className="px-3 py-2 rounded-lg border border-border bg-background text-sm cursor-pointer">
-                <option>Light</option>
-                <option>Dark</option>
-                <option>System</option>
+              <select
+                value={theme ?? "system"}
+                onChange={(e) => setTheme(e.target.value)}
+                className="px-3 py-2 rounded-lg border border-border bg-background text-sm cursor-pointer"
+              >
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="system">System</option>
               </select>
             </div>
             <div className="flex items-center justify-between py-2">
               <div>
                 <p className="text-sm font-medium text-foreground">Compact mode</p>
-                <p className="text-xs text-muted-foreground">Reduce spacing for denser layouts</p>
+                <p className="text-xs text-muted-foreground">Coming soon</p>
               </div>
-              <Switch />
+              <Switch disabled />
             </div>
           </div>
         </div>
@@ -38,23 +45,23 @@ export function SettingsView() {
             <div className="flex items-center justify-between py-2">
               <div>
                 <p className="text-sm font-medium text-foreground">Email notifications</p>
-                <p className="text-xs text-muted-foreground">Receive updates via email</p>
+                <p className="text-xs text-muted-foreground">Coming soon</p>
               </div>
-              <Switch defaultChecked />
+              <Switch disabled />
             </div>
             <div className="flex items-center justify-between py-2">
               <div>
                 <p className="text-sm font-medium text-foreground">Push notifications</p>
-                <p className="text-xs text-muted-foreground">Browser push notifications</p>
+                <p className="text-xs text-muted-foreground">Coming soon</p>
               </div>
-              <Switch defaultChecked />
+              <Switch disabled />
             </div>
             <div className="flex items-center justify-between py-2">
               <div>
                 <p className="text-sm font-medium text-foreground">Project updates</p>
-                <p className="text-xs text-muted-foreground">Get notified about project changes</p>
+                <p className="text-xs text-muted-foreground">Coming soon</p>
               </div>
-              <Switch defaultChecked />
+              <Switch disabled />
             </div>
           </div>
         </div>
@@ -65,23 +72,23 @@ export function SettingsView() {
             <div className="flex items-center justify-between py-2">
               <div>
                 <p className="text-sm font-medium text-foreground">Auto-suggestions</p>
-                <p className="text-xs text-muted-foreground">Get AI-powered recommendations</p>
+                <p className="text-xs text-muted-foreground">Coming soon</p>
               </div>
-              <Switch defaultChecked />
+              <Switch disabled />
             </div>
             <div className="flex items-center justify-between py-2">
               <div>
                 <p className="text-sm font-medium text-foreground">Voice responses</p>
-                <p className="text-xs text-muted-foreground">Enable voice assistant</p>
+                <p className="text-xs text-muted-foreground">Coming soon</p>
               </div>
-              <Switch />
+              <Switch disabled />
             </div>
             <div className="flex items-center justify-between py-2">
               <div>
                 <p className="text-sm font-medium text-foreground">Assistant character</p>
-                <p className="text-xs text-muted-foreground">Choose your AI assistant</p>
+                <p className="text-xs text-muted-foreground">Coming soon</p>
               </div>
-              <select className="px-3 py-2 rounded-lg border border-border bg-background text-sm cursor-pointer">
+              <select disabled className="px-3 py-2 rounded-lg border border-border bg-muted text-sm cursor-not-allowed opacity-60">
                 <option>Eva</option>
                 <option>Alex</option>
                 <option>Sam</option>
@@ -96,16 +103,16 @@ export function SettingsView() {
             <div className="flex items-center justify-between py-2">
               <div>
                 <p className="text-sm font-medium text-foreground">Analytics tracking</p>
-                <p className="text-xs text-muted-foreground">Help improve our service</p>
+                <p className="text-xs text-muted-foreground">Coming soon</p>
               </div>
-              <Switch defaultChecked />
+              <Switch disabled />
             </div>
             <div className="flex items-center justify-between py-2">
               <div>
                 <p className="text-sm font-medium text-foreground">Auto-save projects</p>
-                <p className="text-xs text-muted-foreground">Automatically save your work</p>
+                <p className="text-xs text-muted-foreground">Coming soon</p>
               </div>
-              <Switch defaultChecked />
+              <Switch disabled />
             </div>
           </div>
         </div>

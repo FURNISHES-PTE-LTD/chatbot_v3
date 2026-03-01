@@ -1,6 +1,5 @@
 "use client"
 
-import { DEMO_RECENT_ID } from "@/lib/constants"
 import { AppProvider } from "@/lib/contexts/app-context"
 import { WorkspaceProvider, useWorkspaceContext } from "@/lib/contexts/workspace-context"
 import { CurrentConversationProvider } from "@/lib/contexts/current-conversation-context"
@@ -14,13 +13,15 @@ import { MainContent } from "./main-content"
 import { Navbar } from "./navbar"
 import { TutorialGuide } from "./tutorial-guide"
 import { useState, useEffect } from "react"
+import { Menu } from "lucide-react"
 import { apiGet, API_ROUTES } from "@/lib/api"
 
 function DashboardLayoutInner() {
-  const [activeItem, setActiveItem] = useState(DEMO_RECENT_ID)
+  const [activeItem, setActiveItem] = useState("new-chat")
   const [isTutorialOpen, setIsTutorialOpen] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [workspaceListKey, setWorkspaceListKey] = useState(0)
-  const [recents, setRecents] = useState<RecentItem[]>([{ id: DEMO_RECENT_ID, label: "Design brief demo" }])
+  const [recents, setRecents] = useState<RecentItem[]>([])
   const [pendingChatMessage, setPendingChatMessage] = useState<string | null>(null)
   const { setShowAssistantPicker } = useWorkspaceContext()
 
@@ -31,10 +32,7 @@ function DashboardLayoutInner() {
           id: `convo-${c.id}`,
           label: c.title,
         }))
-        setRecents((prev) => {
-          const keepDemo = prev.filter((r) => r.id === DEMO_RECENT_ID)
-          return [...keepDemo, ...apiRecents]
-        })
+        setRecents(apiRecents)
       })
       .catch(console.error)
   }, [])
@@ -72,11 +70,17 @@ function DashboardLayoutInner() {
     if (activeItem === oldRecentId) setActiveItem(newId)
   }
 
+  const removeRecent = (id: string) => {
+    setRecents((prev) => prev.filter((r) => r.id !== id))
+    if (activeItem === id) setActiveItem("new-chat")
+  }
+
   const appContextValue = {
     activeItem,
     setActiveItem,
     recents,
     addRecent: (item: RecentItem) => setRecents((prev) => [item, ...prev]),
+    removeRecent,
     onItemClick: handleItemClick,
     onConversationTitleGenerated,
   }
@@ -96,11 +100,27 @@ function DashboardLayoutInner() {
               <Navbar onFurnishesClick={handleFurnishesClick} />
 
               <div className="flex flex-1 overflow-hidden p-2 gap-2 px-4">
-                <div className="overflow-hidden h-full">
+                <button
+                  type="button"
+                  className="md:hidden fixed top-14 left-4 z-50 p-2 rounded-lg bg-card border border-border shadow-sm hover:bg-muted transition-colors"
+                  onClick={() => setMobileNavOpen(true)}
+                  aria-label="Open menu"
+                >
+                  <Menu className="w-5 h-5 text-foreground" />
+                </button>
+                {mobileNavOpen && (
+                  <div className="fixed inset-0 z-40 md:hidden" aria-modal="true" role="dialog">
+                    <div className="fixed inset-0 bg-black/30" onClick={() => setMobileNavOpen(false)} aria-hidden="true" />
+                    <div className="fixed left-0 top-0 h-full w-64 bg-card border-r border-border shadow-lg z-50 overflow-hidden flex flex-col">
+                      <LeftSidebar isOverlay onHelpClick={() => { handleHelpClick(); setMobileNavOpen(false) }} onCloseMobileMenu={() => setMobileNavOpen(false)} />
+                    </div>
+                  </div>
+                )}
+                <div className="overflow-hidden h-full hidden md:flex md:flex-col">
                   <LeftSidebar onHelpClick={handleHelpClick} />
                 </div>
 
-                <div className="flex-1 bg-card overflow-hidden border border-border transition-all duration-200">
+                <div className="flex-1 bg-card overflow-hidden border border-border transition-all duration-200 min-w-0">
                   <MainContent
                     workspaceListKey={workspaceListKey}
                     onEditInChatFromFiles={(title) => {

@@ -57,7 +57,7 @@ export async function POST(req: Request) {
   })
 
   const domainConfig = getDomainConfig()
-  const convCfg = domainConfig.conversation ?? {}
+  const convCfg = (domainConfig.conversation ?? {}) as { max_history?: number; summarize_after?: number; max_context_tokens?: number }
   const maxHistory = convCfg.max_history ?? 50
 
   const historyRows = await prisma.message.findMany({

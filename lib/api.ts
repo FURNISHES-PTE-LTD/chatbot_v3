@@ -13,6 +13,7 @@ export const API_ROUTES = {
   conversation: (id: string) => `/api/conversations/${id}`,
   conversationPreferences: (id: string) => `/api/conversations/${id}/preferences`,
   conversationInsights: (id: string) => `/api/conversations/${id}/insights`,
+  conversationRecommendations: (id: string) => `/api/conversations/${id}/recommendations`,
   conversationTitle: (id: string) => `/api/conversations/${id}/title`,
   conversationExport: (id: string, format?: string) =>
     `/api/conversations/${id}/export${format ? `?format=${format}` : ""}`,
@@ -51,6 +52,16 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  })
+  return handleResponse<T>(res)
+}
+
+/** DELETE request with optional JSON body; throws on !res.ok, returns parsed JSON. */
+export async function apiDelete<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method: "DELETE",
+    headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   })
   return handleResponse<T>(res)
 }

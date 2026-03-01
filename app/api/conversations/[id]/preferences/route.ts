@@ -46,3 +46,39 @@ export async function PATCH(
   })
   return Response.json(pref)
 }
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params
+  let body: { field?: string }
+  try {
+    body = await req.json()
+  } catch {
+    return Response.json({ error: "Invalid JSON" }, { status: 400 })
+  }
+  const field = body?.field
+  if (!field || typeof field !== "string") {
+    return Response.json({ error: "field is required" }, { status: 400 })
+  }
+  const existing = await prisma.preference.findUnique({
+    where: { conversationId_field: { conversationId: id, field } },
+  })
+  if (existing) {
+    await prisma.preferenceChange.create({
+      data: {
+        conversationId: id,
+        field,
+        oldValue: existing.value,
+        newValue: "",
+        changeType: "reject",
+        confidence: 1.0,
+      },
+    })
+    await prisma.preference.delete({
+      where: { conversationId_field: { conversationId: id, field } },
+    })
+  }
+  return Response.json({ ok: true })
+}

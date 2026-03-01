@@ -7,9 +7,10 @@ import { useCurrentPreferences } from "@/lib/contexts/current-preferences-contex
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { RefreshCw, Lightbulb, Home, DollarSign, Star, ListChecks, Download } from "lucide-react"
+import { RefreshCw, Lightbulb, Home, DollarSign, Star, ListChecks, Download, X, Loader2 } from "lucide-react"
 import type { DomainFieldConfig } from "@/lib/types"
-import { apiGet, apiPost, apiPatch, API_ROUTES } from "@/lib/api"
+import { toast } from "sonner"
+import { apiGet, apiPost, apiPatch, apiDelete, API_ROUTES } from "@/lib/api"
 
 
 function PreferenceCard({
@@ -54,9 +55,11 @@ function PreferenceCard({
           <button
             type="button"
             onClick={() => onChange(null)}
-            className={cn("rounded-md px-2 py-1 text-[10px] font-bold bg-accent/15 text-primary hover:bg-accent/20 hover:text-primary transition-all duration-200", tabClass)}
+            className={cn("rounded-md pl-2 pr-1 py-1 text-[10px] font-bold bg-accent/15 text-primary hover:bg-accent/20 hover:text-primary transition-all duration-200 inline-flex items-center gap-1", tabClass)}
+            title="Remove preference"
           >
             {value.replace(/\b\w/g, (c) => c.toUpperCase())}
+            <X className="h-3 w-3 shrink-0" />
           </button>
         ) : (
           options.map((opt) => (
@@ -111,6 +114,7 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
   const { conversationId } = useCurrentConversation()
   const { preferences, setPreferences } = useCurrentPreferences()
   const [brainstormLoading, setBrainstormLoading] = useState(false)
+  const [prefsLoading, setPrefsLoading] = useState(true)
   const [domainFields, setDomainFields] = useState<DomainFieldConfig[]>([])
 
   const [roomType, setRoomType] = useState<string | null>(null)
@@ -134,6 +138,7 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
 
   useEffect(() => {
     if (!conversationId) {
+      setPrefsLoading(false)
       setRoomType(null)
       setBudget(null)
       setDesignStyle(null)
@@ -142,6 +147,7 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
       setPreferences({})
       return
     }
+    setPrefsLoading(true)
     apiGet<{ field: string; value: string }[]>(API_ROUTES.conversationPreferences(conversationId))
       .then((prefs) => {
         const map: Record<string, string> = {}
@@ -165,6 +171,7 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
         setFurnitureNeeds(keyToVal.furnitureNeeds ?? null)
       })
       .catch(() => {})
+      .finally(() => setPrefsLoading(false))
   }, [conversationId, setPreferences])
 
   const handlePreferenceChange = async (key: string, value: string | null) => {
@@ -180,10 +187,17 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
       setPreferences(next)
       if (conversationId) {
         await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field, value })
+          .then(() => toast.success(`Preference updated: ${field}`))
+          .catch(() => {})
       }
     } else {
       delete next[field]
       setPreferences(next)
+      if (conversationId) {
+        await apiDelete(API_ROUTES.conversationPreferences(conversationId), { field })
+          .then(() => toast.success("Preference removed"))
+          .catch(() => {})
+      }
     }
   }
 
@@ -204,8 +218,12 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
 
       <div className="flex-1 overflow-y-auto p-3">
           <div className="space-y-3">
-            {/* Progress: X of Y fields filled */}
-            {conversationId && (
+            {conversationId && prefsLoading && (
+              <div className="flex items-center justify-center h-32">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            {conversationId && !prefsLoading && (
               <div className="text-[10px] text-muted-foreground px-0.5 pb-0.5">
                 {[roomType, budget, designStyle, colorPref, furnitureNeeds].filter(Boolean).length} of 5 fields filled
               </div>
@@ -224,7 +242,10 @@ export function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
                   setBrainstormLoading(true)
                   try {
                     const data = await apiPost<{ summary?: string }>(API_ROUTES.brainstorm, { conversationId, preferences })
-                    if (data.summary) onSendToChat(data.summary)
+                    if (data.summary) {
+                      onSendToChat(data.summary)
+                      toast.info("Brainstorm ideas added to chat")
+                    }
                   } catch {
                     // ignore
                   } finally {
