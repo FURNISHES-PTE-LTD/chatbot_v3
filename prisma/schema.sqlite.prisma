@@ -1,0 +1,137 @@
+// SQLite schema for local testing (no Docker required).
+// Use: DATABASE_URL="file:./prisma/dev.db" and run db:generate:sqlite, db:push:sqlite.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client-sqlite"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Conversation {
+  id                String            @id @default(cuid())
+  title             String            @default("New Chat")
+  userId            String?
+  user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  messages          Message[]
+  preferences       Preference[]
+  preferenceChanges PreferenceChange[]
+  files             File[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          String    @default("user")
+  accounts      Account[]
+  sessions      Session[]
+  conversations Conversation[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+  @@unique([identifier, token])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String
+  content        String
+  extractions    Json?
+  createdAt      DateTime     @default(now())
+  feedback       MessageFeedback[]
+
+  @@index([conversationId])
+}
+
+model MessageFeedback {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  rating    String
+  comment   String?
+  createdAt DateTime @default(now())
+
+  @@index([messageId])
+}
+
+model Preference {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  field          String
+  value          String
+  confidence     Float        @default(0.5)
+  status         String       @default("potential")
+  source         String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([conversationId, field])
+  @@index([conversationId])
+}
+
+model PreferenceChange {
+  id               String       @id @default(cuid())
+  conversationId   String
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  field            String
+  oldValue         String?
+  newValue         String
+  confidence       Float        @default(0.5)
+  changeType       String       @default("set")
+  confirmed        Boolean      @default(false)
+  sourceMessageId  String?
+  createdAt        DateTime     @default(now())
+
+  @@index([conversationId])
+}
+
+model File {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  filename       String
+  url            String
+  type           String?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+}
