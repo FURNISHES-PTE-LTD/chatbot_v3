@@ -10,6 +10,7 @@ import {
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
 } from "@/lib/openai"
+import { apiError, ErrorCodes } from "@/lib/api-error"
 
 const BrainstormRequestSchema = z.object({
   conversationId: z.string(),
@@ -18,15 +19,12 @@ const BrainstormRequestSchema = z.object({
 
 export async function POST(req: Request) {
   if (!getOpenAIKey()) {
-    return Response.json({ error: OPENAI_KEY_MISSING_MESSAGE }, { status: 503 })
+    return apiError(ErrorCodes.LLM_UNAVAILABLE, OPENAI_KEY_MISSING_MESSAGE, 503)
   }
   const body = await req.json()
   const parsed = BrainstormRequestSchema.safeParse(body)
   if (!parsed.success) {
-    return Response.json(
-      { error: "Invalid request", details: parsed.error.flatten() },
-      { status: 400 },
-    )
+    return apiError(ErrorCodes.VALIDATION_ERROR, "Invalid request", 400, parsed.error.flatten())
   }
   const { conversationId, preferences } = parsed.data
 

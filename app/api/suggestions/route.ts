@@ -10,6 +10,7 @@ import {
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
 } from "@/lib/openai"
+import { apiError, ErrorCodes } from "@/lib/api-error"
 
 const SuggestionsRequestSchema = z.object({
   conversationId: z.string(),
@@ -28,10 +29,7 @@ export async function POST(req: Request) {
   const body = await req.json()
   const parsed = SuggestionsRequestSchema.safeParse(body)
   if (!parsed.success) {
-    return Response.json(
-      { error: "Invalid request", details: parsed.error.flatten() },
-      { status: 400 },
-    )
+    return apiError(ErrorCodes.VALIDATION_ERROR, "Invalid request", 400, parsed.error.flatten())
   }
   const { conversationId } = parsed.data
 

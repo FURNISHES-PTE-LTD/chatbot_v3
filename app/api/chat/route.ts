@@ -25,6 +25,7 @@ import {
   withFallback,
 } from "@/lib/openai"
 import { checkCostLimit } from "@/lib/cost-tracker"
+import { apiError, ErrorCodes } from "@/lib/api-error"
 
 const RequestSchema = z.object({
   conversationId: z.string().optional(),
@@ -36,27 +37,27 @@ export async function POST(req: Request) {
   const start = Date.now()
   const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous"
   if (!checkRateLimit(clientIp)) {
-    return Response.json({ error: "Too many requests. Please slow down." }, { status: 429 })
+    return apiError(ErrorCodes.RATE_LIMITED, "Too many requests. Please slow down.", 429)
   }
 
   if (!getOpenAIKey()) {
-    return Response.json({ error: OPENAI_KEY_MISSING_MESSAGE }, { status: 503 })
+    return apiError(ErrorCodes.LLM_UNAVAILABLE, OPENAI_KEY_MISSING_MESSAGE, 503)
   }
 
   const body = await req.json()
   const parsed = RequestSchema.safeParse(body)
   if (!parsed.success) {
-    return Response.json({ error: parsed.error.flatten() }, { status: 400 })
+    return apiError(ErrorCodes.VALIDATION_ERROR, String(parsed.error.flatten()), 400)
   }
 
   const { conversationId, message, preferences } = parsed.data
   const validation = validateInput(message)
   if (!validation.valid) {
-    return Response.json({ error: validation.reason }, { status: 400 })
+    return apiError(ErrorCodes.VALIDATION_ERROR, validation.reason ?? "Validation failed", 400)
   }
   const moderation = await checkModeration(message)
   if (!moderation.safe) {
-    return Response.json({ error: moderation.reason }, { status: 400 })
+    return apiError(ErrorCodes.MODERATION_FLAGGED, moderation.reason ?? "Moderation flagged", 400)
   }
 
   const session = await getServerSession(authOptions)
@@ -101,11 +102,10 @@ export async function POST(req: Request) {
   if (convoId) {
     const { allowed, limit } = await checkCostLimit(convoId)
     if (!allowed) {
-      return Response.json(
-        {
-          error: `This conversation has reached its usage limit ($${limit}). Please start a new conversation.`,
-        },
-        { status: 429 }
+      return apiError(
+        ErrorCodes.RATE_LIMITED,
+        `This conversation has reached its usage limit ($${limit}). Please start a new conversation.`,
+        429
       )
     }
   }

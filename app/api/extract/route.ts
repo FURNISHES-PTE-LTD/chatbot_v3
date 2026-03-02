@@ -33,6 +33,7 @@ import {
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
 } from "@/lib/openai"
+import { apiError, ErrorCodes } from "@/lib/api-error"
 
 const ExtractRequestSchema = z.object({
   messageId: z.string().optional().nullable(),
@@ -79,15 +80,12 @@ function expandMessageVocabulary(content: string): string {
 
 export async function POST(req: Request) {
   if (!getOpenAIKey()) {
-    return Response.json({ error: OPENAI_KEY_MISSING_MESSAGE }, { status: 503 })
+    return apiError(ErrorCodes.LLM_UNAVAILABLE, OPENAI_KEY_MISSING_MESSAGE, 503)
   }
   const body = await req.json()
   const parsed = ExtractRequestSchema.safeParse(body)
   if (!parsed.success) {
-    return Response.json(
-      { error: "Invalid request", details: parsed.error.flatten() },
-      { status: 400 },
-    )
+    return apiError(ErrorCodes.VALIDATION_ERROR, "Invalid request", 400, parsed.error.flatten())
   }
   const { messageId, content, conversationId } = parsed.data
 
