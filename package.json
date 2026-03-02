@@ -116,6 +116,10 @@
     "typescript": "^5",
     "vitest": "^4.0.18"
   },
+  "overrides": {
+    "preact": "10.11.3",
+    "magicast": "0.3.5"
+  },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
   }
