@@ -3,6 +3,7 @@ import path from "path"
 import { randomUUID } from "crypto"
 import { prisma } from "@/lib/db"
 import { apiError, ErrorCodes } from "@/lib/api-error"
+import { log } from "@/lib/logger"
 import { UPLOAD_DIR, MAX_FILE_SIZE_BYTES, ALLOWED_MIME_TYPES, getUploadErrorMessageSize } from "@/lib/upload-constants"
 
 export async function POST(req: Request) {
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
     }
     return Response.json({ url, filename: file.name })
   } catch (e) {
-    console.error("Upload error:", e)
+    log({ level: "error", event: "upload_error", error: String(e) })
     return apiError(ErrorCodes.INTERNAL_ERROR, "Upload failed", 500)
   }
 }

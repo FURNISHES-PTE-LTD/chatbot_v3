@@ -1,5 +1,6 @@
 import { getDomainConfig } from "@/lib/domain-config"
 import { apiError, ErrorCodes } from "@/lib/api-error"
+import { log } from "@/lib/logger"
 
 export async function GET() {
   try {
@@ -13,7 +14,7 @@ export async function GET() {
     })
   } catch (e) {
     const message = e instanceof Error ? e.message : "Config failed"
-    console.error("[GET /api/config]", e)
+    log({ level: "error", event: "api_config_error", error: String(e) })
     return apiError(ErrorCodes.INTERNAL_ERROR, message, 500)
   }
 }
