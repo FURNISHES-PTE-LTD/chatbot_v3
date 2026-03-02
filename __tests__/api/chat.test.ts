@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest"
 
+const BASE_URL = process.env.TEST_BASE_URL ?? "http://localhost:3000"
+
 describe("chat API", () => {
   it("validates request body shape when server responds", async () => {
-    const res = await fetch("http://localhost:3000/api/chat", {
+    const res = await fetch(`${BASE_URL}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
@@ -12,7 +14,7 @@ describe("chat API", () => {
   })
 
   it("rejects empty message when server responds", async () => {
-    const res = await fetch("http://localhost:3000/api/chat", {
+    const res = await fetch(`${BASE_URL}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: "" }),
