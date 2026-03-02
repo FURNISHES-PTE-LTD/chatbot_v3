@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { prisma } from "@/lib/db"
 import { requireConversationAccess } from "@/lib/auth-helpers"
+import { apiError, ErrorCodes } from "@/lib/api-error"
 
 const PreferencesPatchSchema = z.object({
   field: z.string(),
@@ -13,7 +14,7 @@ export async function GET(
 ) {
   const { id } = await params
   const { error, status } = await requireConversationAccess(id)
-  if (error) return Response.json({ error }, { status })
+  if (error) return apiError(status === 404 ? ErrorCodes.NOT_FOUND : ErrorCodes.FORBIDDEN, error, status)
   const prefs = await prisma.preference.findMany({
     where: { conversationId: id },
   })
@@ -26,14 +27,11 @@ export async function PATCH(
 ) {
   const { id } = await params
   const { error, status } = await requireConversationAccess(id)
-  if (error) return Response.json({ error }, { status })
+  if (error) return apiError(status === 404 ? ErrorCodes.NOT_FOUND : ErrorCodes.FORBIDDEN, error, status)
   const body = await req.json()
   const parsed = PreferencesPatchSchema.safeParse(body)
   if (!parsed.success) {
-    return Response.json(
-      { error: "Invalid request", details: parsed.error.flatten() },
-      { status: 400 },
-    )
+    return apiError(ErrorCodes.VALIDATION_ERROR, "Invalid request", 400, parsed.error.flatten())
   }
   const { field, value } = parsed.data
   const pref = await prisma.preference.upsert({
@@ -58,16 +56,16 @@ export async function DELETE(
 ) {
   const { id } = await params
   const { error, status } = await requireConversationAccess(id)
-  if (error) return Response.json({ error }, { status })
+  if (error) return apiError(status === 404 ? ErrorCodes.NOT_FOUND : ErrorCodes.FORBIDDEN, error, status)
   let body: { field?: string }
   try {
     body = await req.json()
   } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 })
+    return apiError(ErrorCodes.VALIDATION_ERROR, "Invalid JSON", 400)
   }
   const field = body?.field
   if (!field || typeof field !== "string") {
-    return Response.json({ error: "field is required" }, { status: 400 })
+    return apiError(ErrorCodes.VALIDATION_ERROR, "field is required", 400)
   }
   const existing = await prisma.preference.findUnique({
     where: { conversationId_field: { conversationId: id, field } },

@@ -6,6 +6,7 @@ import { generateText } from "ai"
 import { openai } from "@ai-sdk/openai"
 import { prisma } from "@/lib/db"
 import { requireConversationAccess } from "@/lib/auth-helpers"
+import { apiError, ErrorCodes } from "@/lib/api-error"
 import { getDomainConfig } from "@/lib/domain-config"
 import {
   getOpenAIKey,
@@ -32,7 +33,7 @@ export async function GET(
 ) {
   const { id } = await params
   const { error, status } = await requireConversationAccess(id)
-  if (error) return Response.json({ error }, { status })
+  if (error) return apiError(status === 404 ? ErrorCodes.NOT_FOUND : ErrorCodes.FORBIDDEN, error, status)
   const analytics = getDomainConfig().analytics as { trends_enabled?: boolean } | undefined
   if (analytics?.trends_enabled === false) {
     return Response.json({

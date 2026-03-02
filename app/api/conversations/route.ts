@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { apiError, ErrorCodes } from "@/lib/api-error"
 
 export async function GET() {
   try {
@@ -35,6 +36,6 @@ export async function GET() {
     console.error("[GET /api/conversations]", e)
     const message = e instanceof Error ? e.message : "Database unavailable"
     const status = message.includes("Invalid environment") || message.includes("DATABASE") ? 503 : 500
-    return Response.json({ error: message }, { status })
+    return apiError(ErrorCodes.INTERNAL_ERROR, message, status)
   }
 }

@@ -8,6 +8,7 @@ import { zodSchema } from "ai"
 import { z } from "zod"
 import { prisma } from "@/lib/db"
 import { requireConversationAccess } from "@/lib/auth-helpers"
+import { apiError, ErrorCodes } from "@/lib/api-error"
 import { getDomainConfig } from "@/lib/domain-config"
 import { getPreferencesAsRecord } from "@/lib/api-helpers"
 import {
@@ -36,7 +37,7 @@ export async function GET(
 ) {
   const { id } = await params
   const { error, status } = await requireConversationAccess(id)
-  if (error) return Response.json({ error }, { status })
+  if (error) return apiError(status === 404 ? ErrorCodes.NOT_FOUND : ErrorCodes.FORBIDDEN, error, status)
   const preferences = await getPreferencesAsRecord(prisma, id)
 
   const domainConfig = getDomainConfig()

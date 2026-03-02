@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db"
 import { z } from "zod"
+import { apiError, ErrorCodes } from "@/lib/api-error"
 
 const BodySchema = z.object({
   rating: z.enum(["positive", "negative"]),
@@ -14,14 +15,14 @@ export async function POST(
   const body = await req.json()
   const parsed = BodySchema.safeParse(body)
   if (!parsed.success) {
-    return Response.json({ error: parsed.error.flatten() }, { status: 400 })
+    return apiError(ErrorCodes.VALIDATION_ERROR, String(parsed.error.flatten()), 400)
   }
 
   const message = await prisma.message.findUnique({
     where: { id: messageId },
   })
   if (!message) {
-    return Response.json({ error: "Message not found" }, { status: 404 })
+    return apiError(ErrorCodes.NOT_FOUND, "Message not found", 404)
   }
 
   const feedback = await prisma.messageFeedback.create({

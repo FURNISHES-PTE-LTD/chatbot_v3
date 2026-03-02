@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db"
 import { requireConversationAccess } from "@/lib/auth-helpers"
+import { apiError, ErrorCodes } from "@/lib/api-error"
 
 export async function GET(
   _req: Request,
@@ -7,7 +8,7 @@ export async function GET(
 ) {
   const { id } = await params
   const { error, status } = await requireConversationAccess(id)
-  if (error) return Response.json({ error }, { status })
+  if (error) return apiError(status === 404 ? ErrorCodes.NOT_FOUND : ErrorCodes.FORBIDDEN, error, status)
   const changes = await prisma.preferenceChange.findMany({
     where: { conversationId: id },
     orderBy: { createdAt: "asc" },

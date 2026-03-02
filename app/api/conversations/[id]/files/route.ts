@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db"
 import { requireConversationAccess } from "@/lib/auth-helpers"
+import { apiError, ErrorCodes } from "@/lib/api-error"
 
 /**
  * Return list of files (uploads) for a conversation.
@@ -10,7 +11,7 @@ export async function GET(
 ) {
   const { id } = await params
   const { error, status } = await requireConversationAccess(id)
-  if (error) return Response.json({ error }, { status })
+  if (error) return apiError(status === 404 ? ErrorCodes.NOT_FOUND : ErrorCodes.FORBIDDEN, error, status)
   const rows = await prisma.file.findMany({
     where: { conversationId: id },
     orderBy: { createdAt: "desc" },
