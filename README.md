@@ -50,12 +50,16 @@ AI-powered design assistant for your space and style preferences. Chat to captur
 
 ## Project structure
 
-- `app/` — Next.js App Router (layout, pages, API routes)
-- Upload files are served by id at `/api/uploads/[id]` without auth; protect ids if needed.
-- `components/` — React UI (chat, sidebars, views)
-- `lib/` — Contexts, API client, extraction logic, auth, DB
+- `src/app/` — Next.js App Router (layout, pages, API routes)
+- `src/components/layout/` — Navbar, sidebars, dashboard layout
+- `src/components/views/` — Chat, history, files, discover, playbook, etc.
+- `src/lib/api/` — API client, error helpers, request helpers
+- `src/lib/auth/` — NextAuth config and conversation access helpers
+- `src/lib/domain/` — Domain config and field definitions
+- `src/lib/core/` — DB, env, logger, rate-limit, constants, utils, OpenAI, context-builder, guardrails, cost-tracker
+- `src/lib/contexts/`, `src/lib/extraction/` — React contexts and extraction logic
 - `prisma/` — Schema and seed
-- `config/` — Domain config (fields, prompts)
+- Upload files are served by id at `/api/uploads/[id]` without auth; protect ids if needed.
 
 ## Tech stack
 
