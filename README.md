@@ -20,7 +20,7 @@ AI-powered design assistant for your space and style preferences. Chat to captur
    ```bash
    cp .env.example .env.local
    ```
-   Edit `.env.local`: set `OPENAI_API_KEY` (required for chat and extraction). Optionally set `NEXTAUTH_SECRET` and `NEXTAUTH_URL` for auth.
+   Edit `.env.local`: set `OPENAI_API_KEY` (required for chat and extraction) and `DATABASE_URL`. For production, set `NEXTAUTH_SECRET` and `NEXTAUTH_URL`. Optional: Google OAuth, Sentry (see comments in `.env.example`).
 
 3. **Database**
    ```bash
