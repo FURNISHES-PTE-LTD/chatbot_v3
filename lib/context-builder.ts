@@ -6,6 +6,7 @@ import { messagesToTranscript } from "@/lib/api-helpers"
 import { getOpenAIKey, OPENAI_PRIMARY_MODEL } from "@/lib/openai"
 
 const CHARS_PER_TOKEN = 4
+const MAX_CONTEXT_CHARS = 3000
 
 function estimateTokens(text: string): number {
   return Math.max(0, Math.floor(text.length / CHARS_PER_TOKEN))
@@ -31,7 +32,7 @@ async function summarizeMessages(messages: MessageForContext[]): Promise<string>
     const blob = messagesToTranscript(
       messages.map((m) => ({ role: m.role, content: (m.content || "").slice(0, 300) })),
     )
-    const body = blob.length > 3000 ? blob.slice(-3000) : blob
+    const body = blob.length > MAX_CONTEXT_CHARS ? blob.slice(-MAX_CONTEXT_CHARS) : blob
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
