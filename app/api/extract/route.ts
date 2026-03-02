@@ -46,9 +46,10 @@ const EvidenceSpanSchema = z.object({
   text: z.string(),
 })
 
-let _extractionSchema: z.ZodObject<{ entities: z.ZodArray<z.ZodObject<any>> }> | null = null
+type EntityShape = Record<string, z.ZodTypeAny>
+let _extractionSchema: z.ZodObject<{ entities: z.ZodArray<z.ZodObject<EntityShape>> }> | null = null
 
-function getExtractionSchema(): z.ZodObject<{ entities: z.ZodArray<z.ZodObject<any>> }> {
+function getExtractionSchema(): z.ZodObject<{ entities: z.ZodArray<z.ZodObject<EntityShape>> }> {
   if (!_extractionSchema) {
     const fieldIds = getFieldIds()
     const tuple = (fieldIds.length > 0 ? fieldIds : ["roomType"]) as [string, ...string[]]

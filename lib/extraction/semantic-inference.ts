@@ -138,7 +138,7 @@ export function detectOutcomeStatements(message: string): Array<[string, number]
     const copy = new RegExp(re.source, re.flags)
     let m: RegExpExecArray | null
     while ((m = copy.exec(messageLower)) !== null) {
-      let outcome = m[1].trim().replace(/\s+(and|or|but|,)$/, "")
+      const outcome = m[1].trim().replace(/\s+(and|or|but|,)$/, "")
       if (outcome.length > 2 && !seen.has(outcome)) {
         seen.add(outcome)
         const confidence = /want|need/.test(m[0]) ? 0.8 : 0.6

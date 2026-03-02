@@ -64,7 +64,7 @@ function runPatterns(
       const copy = new RegExp(re.source, re.flags)
       let m: RegExpExecArray | null
       while ((m = copy.exec(messageLower)) !== null) {
-        let term = m[1].trim().replace(/\s+(style|design|color|furniture|room|etc\.?)$/i, "")
+        const term = m[1].trim().replace(/\s+(style|design|color|furniture|room|etc\.?)$/i, "")
         if (term.length > 2) {
           terms.add(term)
           if (!type) type = negType

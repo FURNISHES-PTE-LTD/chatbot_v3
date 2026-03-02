@@ -73,7 +73,9 @@
     "embla-carousel-react": "8.5.1",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",
+    "@prisma/adapter-pg": "7.4.2",
     "next": "16.0.10",
+    "pg": "^8",
     "next-auth": "^4.24.13",
     "next-themes": "^0.4.6",
     "pino": "^10.3.1",
@@ -92,6 +94,8 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.9",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.10",
     "@types/bcrypt": "^6.0.0",
     "@types/node": "^22",
     "@types/react": "^19",

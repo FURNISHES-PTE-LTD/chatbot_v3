@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client"
+import { PrismaPg } from "@prisma/adapter-pg"
 import { getEnv } from "@/lib/env"
 
 getEnv()
@@ -6,8 +7,11 @@ getEnv()
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
 
 function createPrisma() {
-  getEnv() // ensure env validated; Prisma reads DATABASE_URL from prisma.config.ts / env
-  return new PrismaClient()
+  const env = getEnv()
+  const adapter = new PrismaPg({
+    connectionString: env.DATABASE_URL,
+  })
+  return new PrismaClient({ adapter })
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrisma()

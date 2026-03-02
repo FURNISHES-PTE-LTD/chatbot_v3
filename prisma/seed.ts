@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client"
+import { prisma } from "@/lib/db"
 import * as bcrypt from "bcrypt"
-
-const prisma = new PrismaClient()
 
 const SALT_ROUNDS = 12
 

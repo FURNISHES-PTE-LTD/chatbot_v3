@@ -149,7 +149,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
               </div>
               <h2 className="text-xl font-semibold text-foreground mb-2">How can I help you today?</h2>
               <p className="text-sm text-muted-foreground mb-6 max-w-md">
-                Tell me about your space and I'll organize your ideas into a design brief.
+                Tell me about your space and I&apos;ll organize your ideas into a design brief.
               </p>
               <div className="grid grid-cols-2 gap-3 w-full max-w-lg">
                 {chatSuggestionCardsWithIcons.map((card) => {

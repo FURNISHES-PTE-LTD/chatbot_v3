@@ -38,7 +38,7 @@ function DashboardLayoutInner() {
   }, [])
 
   const handleItemClick = useCallback((id: string, label: string) => {
-    let itemId = id
+    const itemId = id
 
     if (id === "new-chat") {
       const newId = `recent-${Date.now()}`
