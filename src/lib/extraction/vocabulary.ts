@@ -9,7 +9,7 @@ export const VOCABULARY_MAP: Record<string, string> = {
   "mid century": "mid-century modern",
   "mid-century": "mid-century modern",
   scandi: "scandinavian",
-  japandi: "japandi",
+  japandi: "japanese minimalist",
   boho: "bohemian",
   "boho-chic": "bohemian",
   farmhouse: "farmhouse",
