@@ -17,6 +17,7 @@ import {
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
 } from "@/lib/core/openai"
+import { gradeRecommendationItem } from "@/lib/quality/recommendation-rubric"
 
 const RecommendationsSchema = z.object({
   items: z.array(
@@ -80,7 +81,16 @@ Return:
         })
     )
     const { object } = result
-    const items = (object.items ?? []).slice(0, maxItems)
+    let items = (object.items ?? []).slice(0, maxItems)
+    const recCfgRubric = (domainConfig.recommendations as { rubric_enabled?: boolean })?.rubric_enabled
+    if (recCfgRubric && items.length > 0) {
+      items = await Promise.all(
+        items.map(async (item) => {
+          const graded = await gradeRecommendationItem(item, preferences)
+          return { ...item, why_it_fits: graded.why_it_fits }
+        })
+      )
+    }
     const suggestions = object.suggestions ?? []
     const budget_breakdown = object.budget_breakdown ?? {}
     return Response.json({ items, suggestions, budget_breakdown })

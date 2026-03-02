@@ -6,6 +6,7 @@ import { CHAT_SUGGESTION_CARDS } from "@/lib/suggestion-cards"
 import { useAppContext } from "@/lib/contexts/app-context"
 import { useChatContext } from "@/lib/contexts/chat-context"
 import { useCurrentConversation } from "@/lib/contexts/current-conversation-context"
+import { useCurrentPreferences } from "@/lib/contexts/current-preferences-context"
 import { parseHighlightedContent } from "@/lib/parse-highlights"
 import type { Workspace, Project } from "@/lib/types"
 import { cn } from "@/lib/core/utils"
@@ -14,6 +15,8 @@ import { toast } from "sonner"
 import { ChatBubble } from "@/components/chat/chat-bubble"
 import { ChatAvatar } from "@/components/chat/chat-avatar"
 import { Input } from "@/components/ui/input"
+import { ConfirmationBanner } from "@/components/preferences/confirmation-banner"
+import { ReviewPrompt } from "@/components/preferences/review-prompt"
 
 const chatSuggestionCardsWithIcons = CHAT_SUGGESTION_CARDS.map((card) => ({
   ...card,
@@ -40,6 +43,8 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
     isStreamingForKey,
     isStreaming,
     conversationIds,
+    proposalsByKey,
+    dismissProposals,
   } = useChatContext()
   const bottomRef = useRef<HTMLDivElement>(null)
   const chatKey =
@@ -50,6 +55,9 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
         : "default"
   const isStreamingThisChat = isStreamingForKey(chatKey)
   const { setConversationId } = useCurrentConversation()
+  const { preferences } = useCurrentPreferences()
+  const [reviewShownAtByKey, setReviewShownAtByKey] = useState<Record<string, number[]>>({})
+  const REVIEW_INTERVAL = 10
 
   const chatMessages = messagesByKey[chatKey] || []
   const messagesToShow = chatMessages
@@ -353,6 +361,49 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
           })
         )}
         <div ref={bottomRef} />
+        {messagesToShow.length >= REVIEW_INTERVAL &&
+          messagesToShow.length % REVIEW_INTERVAL === 0 &&
+          !(reviewShownAtByKey[chatKey] ?? []).includes(messagesToShow.length) && (
+            <ReviewPrompt
+              preferences={preferences}
+              onDismiss={() =>
+                setReviewShownAtByKey((prev) => ({
+                  ...prev,
+                  [chatKey]: [...(prev[chatKey] ?? []), messagesToShow.length],
+                }))
+              }
+              onReview={() => {
+                document.querySelector('[aria-label="Preferences panel"]')?.scrollIntoView({ behavior: "smooth" })
+                setReviewShownAtByKey((prev) => ({
+                  ...prev,
+                  [chatKey]: [...(prev[chatKey] ?? []), messagesToShow.length],
+                }))
+              }}
+            />
+          )}
+        {proposalsByKey[chatKey]?.length > 0 && currentConvoId && (
+          <ConfirmationBanner
+            proposals={proposalsByKey[chatKey]}
+            onAccept={async (changeId) => {
+              try {
+                await apiPost(API_ROUTES.conversationPreferencesConfirm(currentConvoId), { changeId })
+                dismissProposals(chatKey, changeId)
+                toast.success("Preference confirmed")
+              } catch {
+                toast.error("Failed to confirm")
+              }
+            }}
+            onReject={async (changeId) => {
+              try {
+                await apiPost(API_ROUTES.conversationPreferencesReject(currentConvoId), { changeId })
+                dismissProposals(chatKey, changeId)
+                toast.success("Preference rejected")
+              } catch {
+                toast.error("Failed to reject")
+              }
+            }}
+          />
+        )}
       </div>
       <div className="shrink-0 flex flex-col gap-1.5 pt-1.5 border-t border-border -mx-6 px-6">
         {isStreamingThisChat && (

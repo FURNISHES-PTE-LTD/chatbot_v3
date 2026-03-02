@@ -12,6 +12,10 @@ export const API_ROUTES = {
   conversations: "/api/conversations",
   conversation: (id: string) => `/api/conversations/${id}`,
   conversationPreferences: (id: string) => `/api/conversations/${id}/preferences`,
+  conversationPreferencesConfirm: (id: string) => `/api/conversations/${id}/preferences/confirm`,
+  conversationPreferencesReject: (id: string) => `/api/conversations/${id}/preferences/reject`,
+  conversationShare: (id: string) => `/api/conversations/${id}/share`,
+  shared: (shareId: string) => `/api/shared/${shareId}`,
   conversationInsights: (id: string) => `/api/conversations/${id}/insights`,
   conversationRecommendations: (id: string) => `/api/conversations/${id}/recommendations`,
   conversationTitle: (id: string) => `/api/conversations/${id}/title`,
@@ -20,6 +24,7 @@ export const API_ROUTES = {
   conversationEvents: (id: string) => `/api/conversations/${id}/events`,
   conversationFiles: (id: string) => `/api/conversations/${id}/files`,
   messageFeedback: (messageId: string) => `/api/messages/${messageId}/feedback`,
+  message: (messageId: string) => `/api/messages/${messageId}`,
 } as const
 
 async function handleResponse<T>(res: Response, url?: string): Promise<T> {

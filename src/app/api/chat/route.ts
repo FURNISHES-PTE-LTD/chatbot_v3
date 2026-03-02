@@ -25,7 +25,13 @@ import {
   withFallback,
 } from "@/lib/core/openai"
 import { checkCostLimit } from "@/lib/core/cost-tracker"
+import { recordCost } from "@/lib/core/cost-logger"
+import { lookupDesignRule, planLayout, parseRoomDimensions } from "@/lib/design-rules"
+import { retrieveRelevant } from "@/lib/rag/retriever"
+import { checkPolicy } from "@/lib/policy/enforcement"
+import { getResponseLengthInstruction } from "@/lib/core/response-length"
 import { apiError, ErrorCodes } from "@/lib/api"
+import { logSecurityEvent } from "@/lib/core/security-logger"
 
 const RequestSchema = z.object({
   conversationId: z.string().optional(),
@@ -37,6 +43,7 @@ export async function POST(req: Request) {
   const start = Date.now()
   const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous"
   if (!checkRateLimit(clientIp)) {
+    logSecurityEvent({ type: "rate_limit", clientIp })
     return apiError(ErrorCodes.RATE_LIMITED, "Too many requests. Please slow down.", 429)
   }
 
@@ -53,10 +60,14 @@ export async function POST(req: Request) {
   const { conversationId, message, preferences } = parsed.data
   const validation = validateInput(message)
   if (!validation.valid) {
+    if (validation.reason?.toLowerCase().includes("injection")) {
+      logSecurityEvent({ type: "injection_detected", clientIp, details: validation.reason })
+    }
     return apiError(ErrorCodes.VALIDATION_ERROR, validation.reason ?? "Validation failed", 400)
   }
   const moderation = await checkModeration(message)
   if (!moderation.safe) {
+    logSecurityEvent({ type: "moderation_flagged", clientIp, details: moderation.reason })
     return apiError(ErrorCodes.MODERATION_FLAGGED, moderation.reason ?? "Moderation flagged", 400)
   }
 
@@ -94,6 +105,25 @@ export async function POST(req: Request) {
     prefRecord = await getPreferencesAsRecord(prisma, convoId!)
   }
 
+  const policy = checkPolicy(message, prefRecord)
+  if (policy.blocked && policy.clarificationMessage) {
+    await prisma.message.create({
+      data: { conversationId: convoId!, role: "assistant", content: policy.clarificationMessage },
+    })
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(policy.clarificationMessage!))
+        controller.close()
+      },
+    })
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        ...(convoId ? { "X-Conversation-Id": convoId } : {}),
+      },
+    })
+  }
+
   const { systemSuffix, messages } = await buildContext(messagesForContext, prefRecord, {
     maxContextTokens: convCfg.max_context_tokens,
     summarizeAfter: convCfg.summarize_after,
@@ -102,6 +132,7 @@ export async function POST(req: Request) {
   if (convoId) {
     const { allowed, limit } = await checkCostLimit(convoId)
     if (!allowed) {
+      logSecurityEvent({ type: "cost_limit_hit", clientIp, conversationId: convoId })
       return apiError(
         ErrorCodes.RATE_LIMITED,
         `This conversation has reached its usage limit ($${limit}). Please start a new conversation.`,
@@ -110,44 +141,90 @@ export async function POST(req: Request) {
     }
   }
 
-  const basePrompt = (domainConfig.system_prompt || "").trim() + systemSuffix
+  let basePrompt = (domainConfig.system_prompt || "").trim() + systemSuffix
+  const designRule = lookupDesignRule(message)
+  if (designRule) {
+    basePrompt += `\n\n[DESIGN RULE] Use these exact numbers when answering: ${designRule}`
+  }
+  try {
+    const ragChunks = await retrieveRelevant(message, 3)
+    if (ragChunks.length > 0) {
+      basePrompt += `\n\n[DESIGN KNOWLEDGE] Ground your answer in this when relevant:\n${ragChunks.join("\n\n---\n\n")}`
+    }
+  } catch {
+    // RAG optional (e.g. no embeddings seeded or no API key)
+  }
+  const layoutKeywords = ["layout", "arrange", "where should i put", "where to put", "placement", "floor plan"]
+  const wantsLayout = layoutKeywords.some((k) => message.toLowerCase().includes(k))
+  if (wantsLayout) {
+    const parsed = parseRoomDimensions(message)
+    const roomW = prefRecord.roomWidth ?? (parsed != null ? String(parsed.widthInches / 12) : null)
+    const roomL = prefRecord.roomLength ?? (parsed != null ? String(parsed.lengthInches / 12) : null)
+    if (roomW && roomL) {
+      const widthInches = typeof roomW === "string" ? parseFloat(roomW) * 12 : Number(roomW) * 12
+      const lengthInches = typeof roomL === "string" ? parseFloat(roomL) * 12 : Number(roomL) * 12
+      if (widthInches > 0 && lengthInches > 0) {
+        const options = planLayout({
+          roomWidthInches: widthInches,
+          roomLengthInches: lengthInches,
+          doors: [{ wall: "south", offsetInches: 0 }],
+          windows: [{ wall: "east", offsetInches: 24 }],
+          closets: [],
+        })
+        const layoutText = options
+          .map(
+            (opt, i) =>
+              `Option ${i + 1}: ${opt.rationale} Placements: ${opt.placements.map((p) => `${p.piece} on ${p.position.wall} wall`).join("; ")}.`
+          )
+          .join(" ")
+        basePrompt += `\n\n[LAYOUT OPTIONS] Present these placement options naturally: ${layoutText}`
+      }
+    }
+  }
+  const responseLengthInstruction = getResponseLengthInstruction(message, messagesForContext.length)
+  basePrompt += `\n\n${responseLengthInstruction}`
   const systemPrompt = buildSafeSystemPrompt(basePrompt)
 
-  const streamOptions = {
-    system: systemPrompt,
-    messages: messages.map((m) => ({
-      role: m.role as "user" | "assistant" | "system",
-      content: m.content,
-    })),
-    abortSignal: req.signal,
-    onFinish: ({ usage }: { usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number } }) => {
-      if (usage) {
-        const costUsd = computeCost(usage, OPENAI_PRIMARY_MODEL)
-        log({
-          level: "info",
-          event: "llm_usage",
-          conversationId: convoId,
-          promptTokens: usage.promptTokens ?? 0,
-          completionTokens: usage.completionTokens ?? 0,
-          totalTokens: usage.totalTokens ?? 0,
-          model: OPENAI_PRIMARY_MODEL,
-          costUsd: Math.round(costUsd * 1e6) / 1e6,
-        })
-      }
-    },
+  function buildStreamOptions(model: string) {
+    return {
+      system: systemPrompt,
+      messages: messages.map((m) => ({
+        role: m.role as "user" | "assistant" | "system",
+        content: m.content,
+      })),
+      abortSignal: req.signal,
+      onFinish: ({ usage }: { usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number } }) => {
+        if (usage && convoId) {
+          const promptTokens = usage.promptTokens ?? 0
+          const completionTokens = usage.completionTokens ?? 0
+          const costUsd = computeCost(usage, model)
+          log({
+            level: "info",
+            event: "llm_usage",
+            conversationId: convoId,
+            promptTokens,
+            completionTokens,
+            totalTokens: usage.totalTokens ?? 0,
+            model,
+            costUsd: Math.round(costUsd * 1e6) / 1e6,
+          })
+          void recordCost(convoId, model, promptTokens, completionTokens, costUsd)
+        }
+      },
+    }
   }
 
   let result: Awaited<ReturnType<typeof streamText>>
   try {
     result = await streamText({
       model: openai(OPENAI_PRIMARY_MODEL),
-      ...streamOptions,
+      ...buildStreamOptions(OPENAI_PRIMARY_MODEL),
       maxRetries: 3,
     })
   } catch {
     result = await streamText({
       model: openai(OPENAI_FALLBACK_MODEL),
-      ...streamOptions,
+      ...buildStreamOptions(OPENAI_FALLBACK_MODEL),
       maxRetries: 2,
     })
   }

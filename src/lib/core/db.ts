@@ -46,9 +46,15 @@ function getProjectRootSync(): string {
 /** Load SQLite Prisma client from project root so resolution works under Turbopack. */
 function loadSqliteClient(): { PrismaClient: new (opts: { adapter: unknown }) => PrismaClient } {
   const projectRoot = getProjectRootSync()
-  const req = createRequire(path.join(projectRoot, "package.json"))
+  const clientPath = path.join(projectRoot, "node_modules", ".prisma", "client-sqlite")
+  if (!fs.existsSync(clientPath)) {
+    throw new Error(
+      "SQLite client not found. Run: npm run db:generate (then npm run db:push:sqlite for fallback DB)."
+    )
+  }
   try {
-    return req(".prisma/client-sqlite") as { PrismaClient: new (opts: { adapter: unknown }) => PrismaClient }
+    const req = createRequire(path.join(projectRoot, "package.json"))
+    return req(clientPath) as { PrismaClient: new (opts: { adapter: unknown }) => PrismaClient }
   } catch {
     throw new Error(
       "SQLite client not found. Run: npm run db:generate (then npm run db:push:sqlite for fallback DB)."

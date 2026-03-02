@@ -20,6 +20,9 @@ interface ChatContextValue {
   isStreamingForKey: (key: string) => boolean
   isStreaming: boolean
   conversationIds: Record<string, string>
+  /** Pending preference proposals (from extract) for confirmation banner. */
+  proposalsByKey: Record<string, Array<{ field: string; value: string; confidence: number; changeId: string }>>
+  dismissProposals: (chatKey: string, changeId?: string) => void
   /** Clear in-memory data for a chat key (e.g. when conversation is deleted). */
   removeConversationData: (chatKey: string) => void
 }
@@ -44,9 +47,22 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
   const [internalPending, setInternalPending] = useState<string | null>(null)
   const [streamingKeys, setStreamingKeys] = useState<Set<string>>(new Set())
   const [conversationIds, setConversationIds] = useState<Record<string, string>>({})
+  const [proposalsByKey, setProposalsByKey] = useState<Record<string, Array<{ field: string; value: string; confidence: number; changeId: string }>>>({})
   const { preferences: currentPreferences } = useCurrentPreferences()
 
+  const dismissProposals = useCallback((chatKey: string, changeId?: string) => {
+    if (changeId) {
+      setProposalsByKey((prev) => {
+        const list = prev[chatKey]?.filter((p) => p.changeId !== changeId) ?? []
+        return list.length ? { ...prev, [chatKey]: list } : { ...prev, [chatKey]: [] }
+      })
+    } else {
+      setProposalsByKey((prev) => ({ ...prev, [chatKey]: [] }))
+    }
+  }, [])
+
   const removeConversationData = useCallback((chatKey: string) => {
+    setProposalsByKey((prev) => { const next = { ...prev }; delete next[chatKey]; return next })
     setConversationIds((prev) => {
       const next = { ...prev }
       delete next[chatKey]
@@ -146,23 +162,27 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
         }
         // Only fire extraction and title after successful stream read (avoid on 429/503)
         if (newConvoId) {
-          apiPost<{ entities?: { text: string; field: string; confidence: number }[] }>(API_ROUTES.extract, {
+          apiPost<{ entities?: { text: string; field: string; confidence: number }[]; proposals?: Array<{ field: string; value: string; confidence: number; changeId: string }> }>(API_ROUTES.extract, {
             conversationId: newConvoId,
             content: userContent,
           })
             .then((data) => {
-              if (!data.entities?.length) return
-              data.entities?.forEach((e: { field: string; text: string }) => {
-                toast.success(`Captured: ${e.field} → ${e.text}`)
-              })
-              setMessagesByKey((prev) => {
-                const list = prev[key] || []
-                const lastUserIdx = list.map((m) => m.role).lastIndexOf("user")
-                if (lastUserIdx < 0) return prev
-                const copy = [...list]
-                copy[lastUserIdx] = { ...copy[lastUserIdx], extractions: data.entities }
-                return { ...prev, [key]: copy }
-              })
+              if (data.entities?.length) {
+                data.entities.forEach((e: { field: string; text: string }) => {
+                  toast.success(`Captured: ${e.field} → ${e.text}`)
+                })
+                setMessagesByKey((prev) => {
+                  const list = prev[key] || []
+                  const lastUserIdx = list.map((m) => m.role).lastIndexOf("user")
+                  if (lastUserIdx < 0) return prev
+                  const copy = [...list]
+                  copy[lastUserIdx] = { ...copy[lastUserIdx], extractions: data.entities }
+                  return { ...prev, [key]: copy }
+                })
+              }
+              if (data.proposals?.length) {
+                setProposalsByKey((prev) => ({ ...prev, [key]: data.proposals! }))
+              }
             })
             .catch((err) => console.error("Extraction failed:", err))
         }
@@ -237,6 +257,8 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
     messagesByKey,
     setMessagesByKey,
     sendMessage,
+    proposalsByKey,
+    dismissProposals,
     loadConversation,
     inputValue,
     setInputValue,

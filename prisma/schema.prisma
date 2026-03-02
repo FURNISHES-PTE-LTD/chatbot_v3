@@ -17,6 +17,32 @@ model Conversation {
   preferences       Preference[]
   preferenceChanges PreferenceChange[]
   files             File[]
+  costLogs          CostLog[]
+  sharedProjects    SharedProject[]
+}
+
+model SharedProject {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  shareId        String       @unique
+  createdAt      DateTime     @default(now())
+  expiresAt      DateTime?
+
+  @@index([shareId])
+}
+
+model CostLog {
+  id               String       @id @default(cuid())
+  conversationId  String
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  model            String
+  promptTokens     Int
+  completionTokens Int
+  costUsd          Float
+  createdAt        DateTime     @default(now())
+
+  @@index([conversationId])
 }
 
 model Account {
@@ -133,4 +159,28 @@ model File {
   createdAt      DateTime     @default(now())
 
   @@index([conversationId])
+}
+
+model DesignDoc {
+  id         String   @id @default(cuid())
+  source     String   // filename
+  chunkIndex Int
+  content    String
+  embedding  Json?    // float[] from text-embedding-3-small
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([source])
+}
+
+model CalibrationLog {
+  id                  String   @id @default(cuid())
+  conversationId      String
+  field               String
+  predictedConfidence  Float
+  accepted            Boolean
+  createdAt           DateTime @default(now())
+
+  @@index([conversationId])
+  @@index([field])
 }

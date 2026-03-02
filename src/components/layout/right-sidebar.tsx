@@ -7,10 +7,13 @@ import { useCurrentPreferences } from "@/lib/contexts/current-preferences-contex
 import { useState, useEffect, memo } from "react"
 import { cn } from "@/lib/core/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { RefreshCw, Lightbulb, Home, DollarSign, Star, ListChecks, Download, X, Loader2 } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { RefreshCw, Lightbulb, Home, DollarSign, Star, ListChecks, Download, X, Loader2, Pencil, Share2 } from "lucide-react"
 import type { DomainFieldConfig } from "@/lib/types"
 import { toast } from "sonner"
 import { apiGet, apiPost, apiPatch, apiDelete, API_ROUTES } from "@/lib/api"
+import { ProgressBar } from "@/components/preferences/progress-bar"
+import { SourceModal } from "@/components/preferences/source-modal"
 
 
 function PreferenceCard({
@@ -22,6 +25,13 @@ function PreferenceCard({
   options,
   value,
   onChange,
+  onSourceClick,
+  onEditStart,
+  isEditing,
+  editValue,
+  onEditValueChange,
+  onEditSave,
+  onEditCancel,
   borderOnTabs,
   useMutedBackground,
 }: {
@@ -33,6 +43,13 @@ function PreferenceCard({
   options: string[]
   value: string | null
   onChange: (v: string | null) => void
+  onSourceClick?: () => void
+  onEditStart?: () => void
+  isEditing?: boolean
+  editValue?: string
+  onEditValueChange?: (v: string) => void
+  onEditSave?: () => void
+  onEditCancel?: () => void
   borderOnTabs?: boolean
   useMutedBackground?: boolean
 }) {
@@ -52,15 +69,42 @@ function PreferenceCard({
       <p className="text-[10px] text-muted-foreground mb-2">{description}</p>
       <div className="flex flex-wrap gap-1.5">
         {value ? (
-          <button
-            type="button"
-            onClick={() => onChange(null)}
+          isEditing ? (
+            <span className="inline-flex items-center gap-1">
+              <Input
+                value={editValue ?? value}
+                onChange={(e) => onEditValueChange?.(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") onEditSave?.()
+                  if (e.key === "Escape") onEditCancel?.()
+                }}
+                onBlur={() => onEditSave?.()}
+                className="h-7 text-[10px] w-28"
+                autoFocus
+              />
+            </span>
+          ) : (
+          <span
             className={cn("rounded-md pl-2 pr-1 py-1 text-[10px] font-bold bg-accent/15 text-primary hover:bg-accent/20 hover:text-primary transition-all duration-200 inline-flex items-center gap-1", tabClass)}
-            title="Remove preference"
           >
-            {value.replace(/\b\w/g, (c) => c.toUpperCase())}
-            <X className="h-3 w-3 shrink-0" />
-          </button>
+            <button
+              type="button"
+              onClick={onSourceClick ?? undefined}
+              className="text-left truncate max-w-[100px] cursor-pointer"
+              title={onSourceClick ? "View source" : undefined}
+            >
+              {value.replace(/\b\w/g, (c) => c.toUpperCase())}
+            </button>
+            {onEditStart && (
+              <button type="button" onClick={onEditStart} aria-label="Edit" className="shrink-0 text-muted-foreground hover:text-foreground">
+                <Pencil className="h-3 w-3" />
+              </button>
+            )}
+            <button type="button" onClick={() => onChange(null)} aria-label="Remove preference">
+              <X className="h-3 w-3 shrink-0" />
+            </button>
+          </span>
+          )
         ) : (
           options.map((opt) => (
             <button
@@ -109,6 +153,11 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
   const [brainstormLoading, setBrainstormLoading] = useState(false)
   const [prefsLoading, setPrefsLoading] = useState(true)
   const [domainFields, setDomainFields] = useState<DomainFieldConfig[]>([])
+  const [sourceByField, setSourceByField] = useState<Record<string, string | null>>({})
+  const [sourceModal, setSourceModal] = useState<{ field: string; value: string; sourceMessageId: string | null } | null>(null)
+  const [editingFieldKey, setEditingFieldKey] = useState<string | null>(null)
+  const [editingValue, setEditingValue] = useState("")
+  const [shareLoading, setShareLoading] = useState(false)
 
   const roomType = preferences.roomType ?? null
   const budget = preferences.budget ?? null
@@ -136,13 +185,16 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
       return
     }
     setPrefsLoading(true)
-    apiGet<{ field: string; value: string }[]>(API_ROUTES.conversationPreferences(conversationId))
+    apiGet<{ field: string; value: string; source?: string | null }[]>(API_ROUTES.conversationPreferences(conversationId))
       .then((prefs) => {
         const map: Record<string, string> = {}
+        const sources: Record<string, string | null> = {}
         prefs.forEach((p) => {
           map[p.field] = p.value
+          sources[p.field] = p.source ?? null
         })
         setPreferences(map)
+        setSourceByField(sources)
       })
       .catch(() => toast.error("Failed to load preferences"))
       .finally(() => setPrefsLoading(false))
@@ -188,6 +240,29 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
           <div className="text-sm font-semibold text-foreground truncate">{selectedAssistant.name}</div>
           <div className="text-[10px] text-muted-foreground truncate">{selectedAssistant.tagline}</div>
         </div>
+        {conversationId && (
+          <IconButton
+            icon={Share2}
+            title="Share project"
+            onClick={async () => {
+              if (!conversationId || shareLoading) return
+              setShareLoading(true)
+              try {
+                const data = await apiPost<{ shareUrl: string }>(API_ROUTES.conversationShare(conversationId), {})
+                if (data.shareUrl && typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+                  await navigator.clipboard.writeText(data.shareUrl)
+                  toast.success("Share link copied to clipboard")
+                } else {
+                  toast.success("Share link: " + data.shareUrl)
+                }
+              } catch {
+                toast.error("Failed to create share link")
+              } finally {
+                setShareLoading(false)
+              }
+            }}
+          />
+        )}
         <IconButton icon={RefreshCw} title="Change AI assistant" onClick={() => setShowAssistantPicker(true)} />
       </div>
 
@@ -199,9 +274,10 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
               </div>
             )}
             {conversationId && !prefsLoading && (
-              <div className="text-[10px] text-muted-foreground px-0.5 pb-0.5">
-                {[roomType, budget, designStyle, colorPref, furnitureNeeds].filter(Boolean).length} of 5 fields filled
-              </div>
+              <ProgressBar
+                completed={[roomType, budget, designStyle, colorPref, furnitureNeeds].filter(Boolean).length}
+                total={5}
+              />
             )}
             {/* Brainstorm card */}
             <div className="animate-in fade-in slide-in-from-right-2 duration-200 rounded border border-border bg-muted/30 p-3">
@@ -268,6 +344,13 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
               options={roomOptions}
               value={roomType}
               onChange={(v) => handlePreferenceChange("roomType", v)}
+              onSourceClick={roomType ? () => setSourceModal({ field: "Room Type", value: roomType, sourceMessageId: sourceByField.roomType ?? null }) : undefined}
+              onEditStart={roomType ? () => { setEditingFieldKey("roomType"); setEditingValue(roomType) } : undefined}
+              isEditing={editingFieldKey === "roomType"}
+              editValue={editingValue}
+              onEditValueChange={setEditingValue}
+              onEditSave={async () => { if (editingFieldKey === "roomType" && conversationId) { await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field: KEY_TO_FIELD.roomType, value: editingValue }); setPreferences({ ...preferences, roomType: editingValue }); toast.success("Preference updated"); setEditingFieldKey(null) } }}
+              onEditCancel={() => setEditingFieldKey(null)}
               borderOnTabs
               useMutedBackground
             />
@@ -280,6 +363,13 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
               options={budgetOptions}
               value={budget}
               onChange={(v) => handlePreferenceChange("budget", v)}
+              onSourceClick={budget ? () => setSourceModal({ field: "Budget", value: budget, sourceMessageId: sourceByField.budget ?? null }) : undefined}
+              onEditStart={budget ? () => { setEditingFieldKey("budget"); setEditingValue(budget) } : undefined}
+              isEditing={editingFieldKey === "budget"}
+              editValue={editingValue}
+              onEditValueChange={setEditingValue}
+              onEditSave={async () => { if (editingFieldKey === "budget" && conversationId) { await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field: KEY_TO_FIELD.budget, value: editingValue }); setPreferences({ ...preferences, budget: editingValue }); toast.success("Preference updated"); setEditingFieldKey(null) } }}
+              onEditCancel={() => setEditingFieldKey(null)}
               borderOnTabs
             />
             <PreferenceCard
@@ -291,6 +381,13 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
               options={styleOptions}
               value={designStyle}
               onChange={(v) => handlePreferenceChange("designStyle", v)}
+              onSourceClick={designStyle ? () => setSourceModal({ field: "Design Style", value: designStyle, sourceMessageId: sourceByField.style ?? null }) : undefined}
+              onEditStart={designStyle ? () => { setEditingFieldKey("designStyle"); setEditingValue(designStyle) } : undefined}
+              isEditing={editingFieldKey === "designStyle"}
+              editValue={editingValue}
+              onEditValueChange={setEditingValue}
+              onEditSave={async () => { if (editingFieldKey === "designStyle" && conversationId) { await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field: KEY_TO_FIELD.designStyle, value: editingValue }); setPreferences({ ...preferences, style: editingValue }); toast.success("Preference updated"); setEditingFieldKey(null) } }}
+              onEditCancel={() => setEditingFieldKey(null)}
               borderOnTabs
             />
             <PreferenceCard
@@ -302,6 +399,13 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
               options={colorOptions}
               value={colorPref}
               onChange={(v) => handlePreferenceChange("colorPref", v)}
+              onSourceClick={colorPref ? () => setSourceModal({ field: "Color", value: colorPref, sourceMessageId: sourceByField.color ?? null }) : undefined}
+              onEditStart={colorPref ? () => { setEditingFieldKey("colorPref"); setEditingValue(colorPref) } : undefined}
+              isEditing={editingFieldKey === "colorPref"}
+              editValue={editingValue}
+              onEditValueChange={setEditingValue}
+              onEditSave={async () => { if (editingFieldKey === "colorPref" && conversationId) { await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field: KEY_TO_FIELD.colorPref, value: editingValue }); setPreferences({ ...preferences, color: editingValue }); toast.success("Preference updated"); setEditingFieldKey(null) } }}
+              onEditCancel={() => setEditingFieldKey(null)}
               borderOnTabs
             />
             <PreferenceCard
@@ -313,10 +417,26 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
               options={furnitureOptions}
               value={furnitureNeeds}
               onChange={(v) => handlePreferenceChange("furnitureNeeds", v)}
+              onSourceClick={furnitureNeeds ? () => setSourceModal({ field: "Furniture", value: furnitureNeeds, sourceMessageId: sourceByField.furniture ?? null }) : undefined}
+              onEditStart={furnitureNeeds ? () => { setEditingFieldKey("furnitureNeeds"); setEditingValue(furnitureNeeds) } : undefined}
+              isEditing={editingFieldKey === "furnitureNeeds"}
+              editValue={editingValue}
+              onEditValueChange={setEditingValue}
+              onEditSave={async () => { if (editingFieldKey === "furnitureNeeds" && conversationId) { await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field: KEY_TO_FIELD.furnitureNeeds, value: editingValue }); setPreferences({ ...preferences, furniture: editingValue }); toast.success("Preference updated"); setEditingFieldKey(null) } }}
+              onEditCancel={() => setEditingFieldKey(null)}
               borderOnTabs
             />
           </div>
         </div>
+      {sourceModal && (
+        <SourceModal
+          field={sourceModal.field}
+          value={sourceModal.value}
+          sourceMessageId={sourceModal.sourceMessageId}
+          open={!!sourceModal}
+          onClose={() => setSourceModal(null)}
+        />
+      )}
     </aside>
   )
 });

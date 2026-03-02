@@ -26,6 +26,8 @@ import {
   applyVerifierToEntities,
   type EntityWithEvidence,
 } from "@/lib/extraction/verifier"
+import { getCalibratedConfidence } from "@/lib/extraction/calibration"
+import { detectImplicitSignals } from "@/lib/feedback/implicit-signals"
 import {
   getOpenAIKey,
   OPENAI_KEY_MISSING_MESSAGE,
@@ -183,6 +185,11 @@ Message: "${expandedContent}"`
     }
   }
 
+  // 4c. Calibration: adjust confidence from historical acceptance rate when we have enough data
+  for (const entity of entities) {
+    entity.confidence = await getCalibratedConfidence(entity.field, entity.confidence)
+  }
+
   // 5. Load current preferences and apply state change (retraction/update) if detected
   const currentPrefsList = await prisma.preference.findMany({
     where: { conversationId },
@@ -250,13 +257,39 @@ Message: "${expandedContent}"`
     })
   }
 
+  const recentForSignals = recentMessages.map((m: { role: string; content: string | null }) => ({
+    role: m.role,
+    content: m.content ?? "",
+  }))
+  const implicitSignals = detectImplicitSignals(content, currentPrefs, recentForSignals)
+  for (const signal of implicitSignals) {
+    if (messageId) {
+      await prisma.messageFeedback.create({
+        data: {
+          messageId,
+          rating: "implicit",
+          comment: signal.comment,
+        },
+      })
+    }
+  }
+
+  const proposals: Array<{
+    field: string
+    value: string
+    previousValue: string | null
+    confidence: number
+    needsConfirmation: boolean
+    changeId: string
+  }> = []
+
   await prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
     for (const entity of entities) {
       if (entity.needsConfirmation) continue
       if (uncertainty.level === UncertaintyLevel.EXPLORATORY || entity.confidence <= 0) continue
       const existing = currentPrefs[entity.field]
       const changeType = existing ? "update" : "set"
-      await tx.preferenceChange.create({
+      const created = await tx.preferenceChange.create({
         data: {
           conversationId,
           field: entity.field,
@@ -266,6 +299,15 @@ Message: "${expandedContent}"`
           changeType,
           sourceMessageId: messageId ?? null,
         },
+      })
+      const needsConfirmation = entity.confidence < 0.85 || !!existing
+      proposals.push({
+        field: entity.field,
+        value: entity.text,
+        previousValue: existing ?? null,
+        confidence: entity.confidence,
+        needsConfirmation,
+        changeId: created.id,
       })
       await tx.preference.upsert({
         where: {
@@ -299,5 +341,5 @@ Message: "${expandedContent}"`
     }
   })
 
-  return Response.json({ entities })
+  return Response.json({ entities, proposals })
 }
