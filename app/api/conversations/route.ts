@@ -1,8 +1,8 @@
-import { prisma } from "@/lib/db"
+import { prisma } from "@/lib/core/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { apiError, ErrorCodes } from "@/lib/api-error"
-import { log } from "@/lib/logger"
+import { apiError, ErrorCodes } from "@/lib/api"
+import { log } from "@/lib/core/logger"
 
 export async function GET() {
   try {

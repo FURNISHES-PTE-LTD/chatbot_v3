@@ -1,6 +1,6 @@
 import { streamText } from "ai"
 import { openai } from "@ai-sdk/openai"
-import { prisma } from "@/lib/db"
+import { prisma } from "@/lib/core/db"
 import { z } from "zod"
 import {
   validateInput,
@@ -8,14 +8,14 @@ import {
   sanitizeOutput,
   checkModeration,
   createSanitizeStreamTransform,
-} from "@/lib/guardrails"
-import { checkRateLimit } from "@/lib/rate-limit"
-import { log } from "@/lib/logger"
+} from "@/lib/core/guardrails"
+import { checkRateLimit } from "@/lib/core/rate-limit"
+import { log } from "@/lib/core/logger"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { getDomainConfig } from "@/lib/domain-config"
-import { buildContext } from "@/lib/context-builder"
-import { getPreferencesAsRecord } from "@/lib/api-helpers"
+import { getDomainConfig } from "@/lib/domain/config"
+import { buildContext } from "@/lib/core/context-builder"
+import { getPreferencesAsRecord } from "@/lib/api"
 import {
   getOpenAIKey,
   OPENAI_KEY_MISSING_MESSAGE,
@@ -23,9 +23,9 @@ import {
   OPENAI_FALLBACK_MODEL,
   computeCost,
   withFallback,
-} from "@/lib/openai"
-import { checkCostLimit } from "@/lib/cost-tracker"
-import { apiError, ErrorCodes } from "@/lib/api-error"
+} from "@/lib/core/openai"
+import { checkCostLimit } from "@/lib/core/cost-tracker"
+import { apiError, ErrorCodes } from "@/lib/api"
 
 const RequestSchema = z.object({
   conversationId: z.string().optional(),

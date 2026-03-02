@@ -2,8 +2,8 @@ import { generateObject } from "ai"
 import { openai } from "@ai-sdk/openai"
 import { zodSchema } from "ai"
 import { z } from "zod"
-import { prisma } from "@/lib/db"
-import { getFieldIds } from "@/lib/domain-fields"
+import { prisma } from "@/lib/core/db"
+import { getFieldIds } from "@/lib/domain/fields"
 import { expandVocabulary } from "@/lib/extraction/vocabulary"
 import { detectNegations, mapNegatedTermsToFields } from "@/lib/extraction/negation"
 import { extractIndirectPreferences } from "@/lib/extraction/semantic-inference"
@@ -32,8 +32,8 @@ import {
   withFallback,
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
-} from "@/lib/openai"
-import { apiError, ErrorCodes } from "@/lib/api-error"
+} from "@/lib/core/openai"
+import { apiError, ErrorCodes } from "@/lib/api"
 
 const ExtractRequestSchema = z.object({
   messageId: z.string().optional().nullable(),

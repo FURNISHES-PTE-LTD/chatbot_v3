@@ -1,7 +1,7 @@
 /**
  * Shared server helpers for API routes.
  */
-import type { prisma } from "@/lib/db"
+import { prisma } from "@/lib/core/db"
 
 /** Format messages as "role: content" lines for LLM context. */
 export function messagesToTranscript(

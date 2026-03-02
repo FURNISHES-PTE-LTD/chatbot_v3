@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { computeCost, withFallback } from "@/lib/openai"
+import { computeCost, withFallback } from "@/lib/core/openai"
 
 describe("openai", () => {
   describe("computeCost", () => {

@@ -1,6 +1,6 @@
-import { getDomainConfig } from "@/lib/domain-config"
-import { apiError, ErrorCodes } from "@/lib/api-error"
-import { log } from "@/lib/logger"
+import { getDomainConfig } from "@/lib/domain/config"
+import { apiError, ErrorCodes } from "@/lib/api"
+import { log } from "@/lib/core/logger"
 
 export async function GET() {
   try {

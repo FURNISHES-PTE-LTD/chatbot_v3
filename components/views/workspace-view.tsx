@@ -4,7 +4,7 @@ import { ChevronLeft, LayoutDashboard } from "lucide-react"
 import { MOCK_WORKSPACES, MOCK_PROJECTS_BY_WORKSPACE } from "@/lib/mock-data"
 import type { Workspace, Project } from "@/lib/types"
 import { useChatContext } from "@/lib/contexts/chat-context"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/core/utils"
 import { ChatAvatar } from "@/components/chat/chat-avatar"
 import { ChatBubble } from "@/components/chat/chat-bubble"
 

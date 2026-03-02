@@ -1,7 +1,7 @@
 "use client"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/core/utils"
 
 interface ChatAvatarProps {
   role: "user" | "assistant"

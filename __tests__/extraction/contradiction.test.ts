@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest"
 import { detectChangeIntent, checkContradiction } from "@/lib/extraction/contradiction"
 
-vi.mock("@/lib/domain-fields", () => ({
+vi.mock("@/lib/domain/fields", () => ({
   getFieldLabel: (field: string) => field,
 }))
 

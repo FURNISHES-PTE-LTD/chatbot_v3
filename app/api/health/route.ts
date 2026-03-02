@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/db"
-import { getOpenAIKey } from "@/lib/openai"
+import { prisma } from "@/lib/core/db"
+import { getOpenAIKey } from "@/lib/core/openai"
 
 const startTime = Date.now()
 

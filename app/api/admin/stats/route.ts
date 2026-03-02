@@ -1,7 +1,7 @@
-import { prisma } from "@/lib/db"
+import { prisma } from "@/lib/core/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { apiError, ErrorCodes } from "@/lib/api-error"
+import { apiError, ErrorCodes } from "@/lib/api"
 
 export async function GET() {
   const session = await getServerSession(authOptions)

@@ -19,7 +19,7 @@ import { toast } from "sonner"
 import { apiDelete, API_ROUTES } from "@/lib/api"
 import { IconButton } from "@/components/shared/icon-button"
 import { SectionLabel } from "@/components/shared/section-label"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/core/utils"
 import { useState, useEffect, memo } from "react"
 import { TypingText } from "@/components/shared/typing-text"
 import {

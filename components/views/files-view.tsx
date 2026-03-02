@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Download, Edit3, Loader2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/core/utils"
 import { Badge } from "@/components/ui/badge"
 import { FILES_DATA } from "@/lib/mock-data"
 import { FILE_PALETTES } from "@/lib/theme-colors"

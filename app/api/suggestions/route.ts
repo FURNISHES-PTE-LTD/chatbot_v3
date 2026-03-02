@@ -2,15 +2,15 @@ import { generateObject } from "ai"
 import { openai } from "@ai-sdk/openai"
 import { zodSchema } from "ai"
 import { z } from "zod"
-import { prisma } from "@/lib/db"
-import { messagesToTranscript } from "@/lib/api-helpers"
+import { prisma } from "@/lib/core/db"
+import { messagesToTranscript } from "@/lib/api"
 import {
   getOpenAIKey,
   withFallback,
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
-} from "@/lib/openai"
-import { apiError, ErrorCodes } from "@/lib/api-error"
+} from "@/lib/core/openai"
+import { apiError, ErrorCodes } from "@/lib/api"
 
 const SuggestionsRequestSchema = z.object({
   conversationId: z.string(),

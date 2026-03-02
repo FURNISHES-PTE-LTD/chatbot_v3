@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { checkRateLimit } from "@/lib/rate-limit"
+import { checkRateLimit } from "@/lib/core/rate-limit"
 
 describe("rate-limit", () => {
   it("allows first request", () => {

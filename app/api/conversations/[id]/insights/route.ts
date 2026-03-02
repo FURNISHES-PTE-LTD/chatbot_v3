@@ -2,16 +2,16 @@ import { generateObject } from "ai"
 import { openai } from "@ai-sdk/openai"
 import { zodSchema } from "ai"
 import { z } from "zod"
-import { prisma } from "@/lib/db"
-import { requireConversationAccess } from "@/lib/auth-helpers"
-import { apiError, ErrorCodes } from "@/lib/api-error"
-import { messagesToTranscript } from "@/lib/api-helpers"
+import { prisma } from "@/lib/core/db"
+import { requireConversationAccess } from "@/lib/auth"
+import { apiError, ErrorCodes } from "@/lib/api"
+import { messagesToTranscript } from "@/lib/api"
 import {
   getOpenAIKey,
   withFallback,
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
-} from "@/lib/openai"
+} from "@/lib/core/openai"
 
 const InsightsSchema = z.object({
   keyInsights: z.array(z.string()),

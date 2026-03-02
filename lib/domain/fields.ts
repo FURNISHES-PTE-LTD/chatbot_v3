@@ -1,7 +1,7 @@
 /**
  * Single source of truth for field ids and labels. Server-only (uses getDomainConfig).
  */
-import { getDomainConfig } from "@/lib/domain-config"
+import { getDomainConfig } from "./config"
 
 const DEFAULT_FIELD_IDS = ["roomType", "style", "budget", "color", "furniture", "exclusion"] as const
 

@@ -3,7 +3,7 @@
  * If user has change intent ("actually", "instead") -> allow update.
  * Else -> ask confirmation. Ported from V1 contradiction_handler.py.
  */
-import { getFieldLabel } from "@/lib/domain-fields"
+import { getFieldLabel } from "@/lib/domain/fields"
 
 const CHANGE_INTENT_PATTERNS = [
   /\bactually\b/,

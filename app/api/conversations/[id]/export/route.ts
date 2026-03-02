@@ -6,15 +6,15 @@ import { generateObject } from "ai"
 import { openai } from "@ai-sdk/openai"
 import { zodSchema } from "ai"
 import { z } from "zod"
-import { prisma } from "@/lib/db"
-import { requireConversationAccess } from "@/lib/auth-helpers"
-import { apiError, ErrorCodes } from "@/lib/api-error"
+import { prisma } from "@/lib/core/db"
+import { requireConversationAccess } from "@/lib/auth"
+import { apiError, ErrorCodes } from "@/lib/api"
 import {
   getOpenAIKey,
   withFallback,
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
-} from "@/lib/openai"
+} from "@/lib/core/openai"
 
 const ExportSummarySchema = z.object({
   summary: z.string().describe("2-3 sentence project summary"),

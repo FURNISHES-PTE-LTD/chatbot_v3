@@ -1,6 +1,6 @@
 "use client"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/core/utils"
 
 interface IconButtonProps {
   icon: React.ComponentType<{ className?: string }>

@@ -1,4 +1,4 @@
-import type { ViewId } from "./types"
+import type { ViewId } from "@/lib/types"
 
 // Navigation
 export const VIEW_IDS: Record<string, ViewId> = {

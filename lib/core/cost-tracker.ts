@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/db"
-import { getDomainConfig } from "@/lib/domain-config"
+import { prisma } from "./db"
+import { getDomainConfig } from "@/lib/domain/config"
 
 export async function checkCostLimit(
   conversationId: string

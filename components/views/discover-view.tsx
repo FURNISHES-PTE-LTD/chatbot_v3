@@ -6,7 +6,7 @@ import { SectionLabel } from "@/components/shared/section-label"
 import { KEY_INSIGHTS, TOPICS, RECOMMENDATIONS, PREFERENCES, EXPLORE_NEXT } from "@/lib/mock-data"
 import { PREFERENCE_STATUS } from "@/lib/theme-colors"
 import { useCurrentConversation } from "@/lib/contexts/current-conversation-context"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/core/utils"
 import { toast } from "sonner"
 import { apiGet, API_ROUTES } from "@/lib/api"
 

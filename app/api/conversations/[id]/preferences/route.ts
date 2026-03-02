@@ -1,7 +1,7 @@
 import { z } from "zod"
-import { prisma } from "@/lib/db"
-import { requireConversationAccess } from "@/lib/auth-helpers"
-import { apiError, ErrorCodes } from "@/lib/api-error"
+import { prisma } from "@/lib/core/db"
+import { requireConversationAccess } from "@/lib/auth"
+import { apiError, ErrorCodes } from "@/lib/api"
 
 const PreferencesPatchSchema = z.object({
   field: z.string(),

@@ -1,16 +1,16 @@
 import { generateText } from "ai"
 import { openai } from "@ai-sdk/openai"
 import { z } from "zod"
-import { prisma } from "@/lib/db"
-import { messagesToTranscript } from "@/lib/api-helpers"
+import { prisma } from "@/lib/core/db"
+import { messagesToTranscript } from "@/lib/api"
 import {
   getOpenAIKey,
   OPENAI_KEY_MISSING_MESSAGE,
   withFallback,
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
-} from "@/lib/openai"
-import { apiError, ErrorCodes } from "@/lib/api-error"
+} from "@/lib/core/openai"
+import { apiError, ErrorCodes } from "@/lib/api"
 
 const BrainstormRequestSchema = z.object({
   conversationId: z.string(),

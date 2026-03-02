@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback } from "react"
 import type { Workspace, Project, Assistant } from "@/lib/types"
-import { DEFAULT_WORKSPACE, DEFAULT_PROJECT, DEFAULT_ASSISTANT } from "@/lib/constants"
+import { DEFAULT_WORKSPACE, DEFAULT_PROJECT, DEFAULT_ASSISTANT } from "@/lib/core/constants"
 
 interface WorkspaceContextValue {
   currentWorkspace: Workspace | null

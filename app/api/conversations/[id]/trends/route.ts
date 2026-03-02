@@ -4,16 +4,16 @@
  */
 import { generateText } from "ai"
 import { openai } from "@ai-sdk/openai"
-import { prisma } from "@/lib/db"
-import { requireConversationAccess } from "@/lib/auth-helpers"
-import { apiError, ErrorCodes } from "@/lib/api-error"
-import { getDomainConfig } from "@/lib/domain-config"
+import { prisma } from "@/lib/core/db"
+import { requireConversationAccess } from "@/lib/auth"
+import { apiError, ErrorCodes } from "@/lib/api"
+import { getDomainConfig } from "@/lib/domain/config"
 import {
   getOpenAIKey,
   withFallback,
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
-} from "@/lib/openai"
+} from "@/lib/core/openai"
 
 function trajectoryFromChanges(
   changes: Array<{ field: string }>

@@ -2,8 +2,8 @@
  * Conversation context builder: token-aware history, optional summarization of older messages.
  * Ported from V2 conversation.py.
  */
-import { messagesToTranscript } from "@/lib/api-helpers"
-import { getOpenAIKey, OPENAI_PRIMARY_MODEL } from "@/lib/openai"
+import { messagesToTranscript } from "@/lib/api"
+import { getOpenAIKey, OPENAI_PRIMARY_MODEL } from "./openai"
 
 const CHARS_PER_TOKEN = 4
 const MAX_CONTEXT_CHARS = 3000

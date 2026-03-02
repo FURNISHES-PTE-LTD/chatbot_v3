@@ -6,7 +6,7 @@ import type { Assistant } from "@/lib/types"
 import { useWorkspaceContext } from "@/lib/contexts/workspace-context"
 import { SectionLabel } from "@/components/shared/section-label"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/core/utils"
 
 type AssistantStyleFocus = "creative" | "minimal" | "practical"
 

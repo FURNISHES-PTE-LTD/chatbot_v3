@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/db"
+import { prisma } from "@/lib/core/db"
 import { z } from "zod"
-import { apiError, ErrorCodes } from "@/lib/api-error"
+import { apiError, ErrorCodes } from "@/lib/api"
 
 const BodySchema = z.object({
   rating: z.enum(["positive", "negative"]),

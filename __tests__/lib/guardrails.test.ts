@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { checkInjection, sanitizeOutput } from "@/lib/guardrails"
+import { checkInjection, sanitizeOutput } from "@/lib/core/guardrails"
 
 describe("guardrails", () => {
   describe("checkInjection", () => {

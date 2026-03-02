@@ -1,9 +1,9 @@
 import { writeFile, mkdir } from "fs/promises"
 import path from "path"
 import { randomUUID } from "crypto"
-import { prisma } from "@/lib/db"
-import { apiError, ErrorCodes } from "@/lib/api-error"
-import { log } from "@/lib/logger"
+import { prisma } from "@/lib/core/db"
+import { apiError, ErrorCodes } from "@/lib/api"
+import { log } from "@/lib/core/logger"
 import { UPLOAD_DIR, MAX_FILE_SIZE_BYTES, ALLOWED_MIME_TYPES, getUploadErrorMessageSize } from "@/lib/upload-constants"
 
 export async function POST(req: Request) {

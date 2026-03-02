@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from "react"
 import { toast } from "sonner"
 import type { ChatMessage } from "@/lib/types"
-import { AI_RESPONSE_DELAY_MS } from "@/lib/constants"
+import { AI_RESPONSE_DELAY_MS } from "@/lib/core/constants"
 import { useCurrentPreferences } from "@/lib/contexts/current-preferences-context"
 import { apiGet, apiPost, API_ROUTES } from "@/lib/api"
 

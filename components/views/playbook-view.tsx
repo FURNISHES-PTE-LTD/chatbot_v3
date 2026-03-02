@@ -8,7 +8,7 @@ import type { WfNode, WfEdge } from "@/lib/mock-data"
 import type { TraceEntry } from "@/lib/mock-data"
 import { NODE_COLORS, STATUS_COLORS, SVG_COLORS } from "@/lib/theme-colors"
 import { useCurrentConversation } from "@/lib/contexts/current-conversation-context"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/core/utils"
 import { apiGet, API_ROUTES } from "@/lib/api"
 
 type NodeType = "start" | "process" | "warning" | "end" | "knowledge"

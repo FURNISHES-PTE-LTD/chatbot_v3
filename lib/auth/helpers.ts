@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/db"
+import { authOptions } from "@/lib/auth/auth"
+import { prisma } from "@/lib/core/db"
 
 export async function requireConversationAccess(conversationId: string) {
   const session = await getServerSession(authOptions)

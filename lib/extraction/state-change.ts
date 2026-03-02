@@ -2,8 +2,8 @@
  * State change handler: detect retractions/updates and resolve to preference removals/updates.
  * Ported from V1 state_change_handler.py.
  */
-import { getFieldIds } from "@/lib/domain-fields"
-import { getDomainConfig } from "@/lib/domain-config"
+import { getFieldIds } from "@/lib/domain/fields"
+import { getDomainConfig } from "@/lib/domain/config"
 
 export type ChangeIntent = {
   hasChange: boolean

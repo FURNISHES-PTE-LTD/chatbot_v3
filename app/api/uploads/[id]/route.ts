@@ -6,7 +6,7 @@
 import { readFile } from "fs/promises"
 import path from "path"
 import { NextRequest } from "next/server"
-import { apiError, ErrorCodes } from "@/lib/api-error"
+import { apiError, ErrorCodes } from "@/lib/api"
 import { UPLOAD_DIR, CONTENT_TYPES } from "@/lib/upload-constants"
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -6,17 +6,17 @@ import { generateObject } from "ai"
 import { openai } from "@ai-sdk/openai"
 import { zodSchema } from "ai"
 import { z } from "zod"
-import { prisma } from "@/lib/db"
-import { requireConversationAccess } from "@/lib/auth-helpers"
-import { apiError, ErrorCodes } from "@/lib/api-error"
-import { getDomainConfig } from "@/lib/domain-config"
-import { getPreferencesAsRecord } from "@/lib/api-helpers"
+import { prisma } from "@/lib/core/db"
+import { requireConversationAccess } from "@/lib/auth"
+import { apiError, ErrorCodes } from "@/lib/api"
+import { getDomainConfig } from "@/lib/domain/config"
+import { getPreferencesAsRecord } from "@/lib/api"
 import {
   getOpenAIKey,
   withFallback,
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
-} from "@/lib/openai"
+} from "@/lib/core/openai"
 
 const RecommendationsSchema = z.object({
   items: z.array(

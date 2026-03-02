@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db"
+import { prisma } from "@/lib/core/db"
 import * as bcrypt from "bcrypt"
 
 const SALT_ROUNDS = 12

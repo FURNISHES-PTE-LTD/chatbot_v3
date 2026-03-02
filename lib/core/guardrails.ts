@@ -1,5 +1,5 @@
-import { getDomainConfig } from "@/lib/domain-config"
-import { getOpenAIKey } from "@/lib/openai"
+import { getDomainConfig } from "@/lib/domain/config"
+import { getOpenAIKey } from "./openai"
 
 const MAX_MESSAGE_LENGTH = 10000
 
