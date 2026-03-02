@@ -15,7 +15,7 @@ export async function GET(
     where: { conversationId: id },
     orderBy: { createdAt: "desc" },
   })
-  const files = rows.map((f) => ({
+  const files = rows.map((f: { id: string; filename: string; type: string | null; createdAt: Date }) => ({
     id: f.id,
     title: f.filename,
     type: f.type?.startsWith("image/") ? "image" : "image",

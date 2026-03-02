@@ -18,7 +18,10 @@ export async function GET() {
 
   const avgMessagesPerConversation =
     byConvo.length > 0
-      ? byConvo.reduce((sum, g) => sum + g._count, 0) / byConvo.length
+      ? byConvo.reduce(
+          (sum: number, g: { _count: number }) => sum + g._count,
+          0
+        ) / byConvo.length
       : 0
 
   return Response.json({

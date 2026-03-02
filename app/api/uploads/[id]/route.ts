@@ -1,27 +1,16 @@
 import { readFile } from "fs/promises"
 import path from "path"
 import { NextRequest } from "next/server"
+import { UPLOAD_DIR, CONTENT_TYPES } from "@/lib/upload-constants"
 
-const UPLOAD_DIR = path.join(process.cwd(), "uploads")
-const CONTENT_TYPES: Record<string, string> = {
-  jpeg: "image/jpeg",
-  jpg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-  gif: "image/gif",
-}
-
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   if (!id) {
     return new Response("Bad request", { status: 400 })
   }
   const resolvedDir = path.resolve(UPLOAD_DIR)
   const filepath = path.resolve(UPLOAD_DIR, id)
-  if ((filepath !== resolvedDir && !filepath.startsWith(resolvedDir + path.sep))) {
+  if (filepath !== resolvedDir && !filepath.startsWith(resolvedDir + path.sep)) {
     return new Response("Bad request", { status: 400 })
   }
   try {

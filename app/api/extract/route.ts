@@ -197,8 +197,8 @@ Message: "${expandedContent}"`
     take: 10,
   })
   const recentContents = recentMessages
-    .filter((m) => m.role === "user")
-    .map((m) => m.content ?? "")
+    .filter((m: { role: string }) => m.role === "user")
+    .map((m: { content: string | null }) => m.content ?? "")
 
   const stateChange = detectStateChangeIntent(content)
   if (stateChange.hasChange && stateChange.changeType) {
@@ -207,7 +207,7 @@ Message: "${expandedContent}"`
       currentPrefs,
       recentContents
     )
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
       for (const { field, value } of updates) {
         const existing = currentPrefs[field]
         await tx.preferenceChange.create({
@@ -251,7 +251,7 @@ Message: "${expandedContent}"`
     })
   }
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
     for (const entity of entities) {
       if (entity.needsConfirmation) continue
       if (uncertainty.level === UncertaintyLevel.EXPLORATORY || entity.confidence <= 0) continue

@@ -39,8 +39,11 @@ export async function GET(
   ])
   const preferences: Record<string, string> = {}
   for (const p of prefs) preferences[p.field] = p.value
-  const messagesData = messages.map((m) => ({ role: m.role, content: m.content }))
-  const changeHistory = changes.map((c) => ({
+  const messagesData = messages.map((m: { role: string; content: string }) => ({
+    role: m.role,
+    content: m.content,
+  }))
+  const changeHistory = changes.map((c: { field: string; oldValue: string | null; newValue: string | null; changeType: string; createdAt: Date }) => ({
     field: c.field,
     oldValue: c.oldValue,
     newValue: c.newValue,
@@ -70,7 +73,7 @@ export async function GET(
       const prefsStr = JSON.stringify(preferences, null, 0)
       const recent = messagesData
         .slice(-20)
-        .map((m) => `${m.role}: ${(m.content ?? "").slice(0, 150)}`)
+        .map((m: { role: string; content: string }) => `${m.role}: ${(m.content ?? "").slice(0, 150)}`)
         .join("\n")
       const exportPrompt = `Preferences: ${prefsStr}\nRecent messages:\n${recent}\n\nRespond with JSON: "summary" (2-3 sentences), "key_decisions" (array of short strings), "open_questions" (1-3 questions). Output only JSON.`
       const { object } = await withFallback(

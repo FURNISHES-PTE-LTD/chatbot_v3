@@ -12,7 +12,7 @@ export async function GET(
     where: { conversationId: id },
     orderBy: { createdAt: "asc" },
   })
-  const events = changes.map((c) => ({
+  const events = changes.map((c: { id: string; createdAt: Date; field: string; oldValue: string | null; newValue: string | null; confidence: number | null; changeType: string; confirmed: boolean | null }) => ({
     id: c.id,
     time: c.createdAt.toISOString(),
     field: c.field,

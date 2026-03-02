@@ -1,7 +1,7 @@
 /**
  * Shared server helpers for API routes.
  */
-import type { PrismaClient } from "@prisma/client"
+import type { prisma } from "@/lib/db"
 
 /** Format messages as "role: content" lines for LLM context. */
 export function messagesToTranscript(
@@ -12,13 +12,13 @@ export function messagesToTranscript(
 
 /** Load preferences for a conversation as Record<field, value>. */
 export async function getPreferencesAsRecord(
-  prisma: PrismaClient,
+  prismaInstance: typeof prisma,
   conversationId: string,
 ): Promise<Record<string, string>> {
-  const prefs = await prisma.preference.findMany({
+  const prefs = await prismaInstance.preference.findMany({
     where: { conversationId },
   })
-  return prefs.reduce<Record<string, string>>((acc, p) => {
+  return prefs.reduce<Record<string, string>>((acc: Record<string, string>, p: { field: string; value: string }) => {
     acc[p.field] = p.value
     return acc
   }, {})

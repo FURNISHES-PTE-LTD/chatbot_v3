@@ -22,7 +22,7 @@ export const API_ROUTES = {
   messageFeedback: (messageId: string) => `/api/messages/${messageId}/feedback`,
 } as const
 
-async function handleResponse<T>(res: Response): Promise<T> {
+async function handleResponse<T>(res: Response, url?: string): Promise<T> {
   if (!res.ok) {
     const err = await res
       .json()
@@ -35,7 +35,14 @@ async function handleResponse<T>(res: Response): Promise<T> {
           ? body.error
           : res.statusText
     const status = body.status ?? res.status
-    throw new Error(status >= 500 ? `Server error (${status}): ${message}` : message)
+    const hint = url ? ` (${url})` : ""
+    const fallback =
+      status >= 500 && message === "Internal Server Error"
+        ? " Check server logs and env (e.g. DATABASE_URL, OPENAI_API_KEY)."
+        : ""
+    throw new Error(
+      status >= 500 ? `Server error (${status}): ${message}${hint}${fallback}` : message
+    )
   }
   return res.json() as Promise<T>
 }
@@ -43,7 +50,7 @@ async function handleResponse<T>(res: Response): Promise<T> {
 /** GET request; throws on !res.ok, returns parsed JSON. */
 export async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(path)
-  return handleResponse<T>(res)
+  return handleResponse<T>(res, path)
 }
 
 /** POST request with JSON body; throws on !res.ok, returns parsed JSON. */
@@ -53,7 +60,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   })
-  return handleResponse<T>(res)
+  return handleResponse<T>(res, path)
 }
 
 /** PATCH request with JSON body; throws on !res.ok, returns parsed JSON. */
@@ -63,7 +70,7 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   })
-  return handleResponse<T>(res)
+  return handleResponse<T>(res, path)
 }
 
 /** DELETE request with optional JSON body; throws on !res.ok, returns parsed JSON. */
@@ -73,5 +80,5 @@ export async function apiDelete<T>(path: string, body?: unknown): Promise<T> {
     headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
-  return handleResponse<T>(res)
+  return handleResponse<T>(res, path)
 }

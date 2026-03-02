@@ -2,10 +2,7 @@ import { writeFile, mkdir } from "fs/promises"
 import path from "path"
 import { randomUUID } from "crypto"
 import { prisma } from "@/lib/db"
-
-const UPLOAD_DIR = path.join(process.cwd(), "uploads")
-const MAX_SIZE = 5 * 1024 * 1024 // 5MB
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
+import { UPLOAD_DIR, MAX_FILE_SIZE_BYTES, ALLOWED_MIME_TYPES, getUploadErrorMessageSize } from "@/lib/upload-constants"
 
 export async function POST(req: Request) {
   try {
@@ -15,10 +12,10 @@ export async function POST(req: Request) {
     if (!file || typeof file === "string") {
       return Response.json({ error: "No file provided" }, { status: 400 })
     }
-    if (file.size > MAX_SIZE) {
-      return Response.json({ error: "File too large (max 5MB)" }, { status: 400 })
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      return Response.json({ error: getUploadErrorMessageSize() }, { status: 400 })
     }
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    if (!ALLOWED_MIME_TYPES.includes(file.type as (typeof ALLOWED_MIME_TYPES)[number])) {
       return Response.json({ error: "Invalid type. Use JPEG, PNG, WebP, or GIF." }, { status: 400 })
     }
 

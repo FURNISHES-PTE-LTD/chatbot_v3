@@ -83,7 +83,10 @@ export async function POST(req: Request) {
     orderBy: { createdAt: "asc" },
     take: maxHistory,
   })
-  const messagesForContext = historyRows.map((m) => ({ role: m.role, content: m.content }))
+  const messagesForContext = historyRows.map((m: { role: string; content: string }) => ({
+    role: m.role,
+    content: m.content,
+  }))
 
   let prefRecord: Record<string, string> = preferences ?? {}
   if (Object.keys(prefRecord).length === 0) {
@@ -172,7 +175,7 @@ export async function POST(req: Request) {
     })
 
   const response = result.toTextStreamResponse({
-    headers: { "X-Conversation-Id": convoId },
+    headers: convoId ? { "X-Conversation-Id": convoId } : undefined,
   })
   // Sanitize stream so user never sees leaked [system]: or <|im_start|> etc.
   if (response.body) {

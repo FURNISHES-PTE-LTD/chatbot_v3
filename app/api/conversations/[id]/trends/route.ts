@@ -56,7 +56,7 @@ export async function GET(
         ? "medium"
         : "low"
 
-  const fields = changes.map((c) => ({
+  const fields = changes.map((c: { field: string; changeType: string; confidence: number | null }) => ({
     field: c.field,
     changeType: c.changeType,
     confidence: c.confidence,
