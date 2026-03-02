@@ -2,6 +2,7 @@ import { writeFile, mkdir } from "fs/promises"
 import path from "path"
 import { randomUUID } from "crypto"
 import { prisma } from "@/lib/db"
+import { apiError, ErrorCodes } from "@/lib/api-error"
 import { UPLOAD_DIR, MAX_FILE_SIZE_BYTES, ALLOWED_MIME_TYPES, getUploadErrorMessageSize } from "@/lib/upload-constants"
 
 export async function POST(req: Request) {
@@ -10,13 +11,13 @@ export async function POST(req: Request) {
     const file = formData.get("file") as File | null
     const conversationId = formData.get("conversationId") as string | null
     if (!file || typeof file === "string") {
-      return Response.json({ error: "No file provided" }, { status: 400 })
+      return apiError(ErrorCodes.VALIDATION_ERROR, "No file provided", 400)
     }
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      return Response.json({ error: getUploadErrorMessageSize() }, { status: 400 })
+      return apiError(ErrorCodes.VALIDATION_ERROR, getUploadErrorMessageSize(), 400)
     }
     if (!ALLOWED_MIME_TYPES.includes(file.type as (typeof ALLOWED_MIME_TYPES)[number])) {
-      return Response.json({ error: "Invalid type. Use JPEG, PNG, WebP, or GIF." }, { status: 400 })
+      return apiError(ErrorCodes.VALIDATION_ERROR, "Invalid type. Use JPEG, PNG, WebP, or GIF.", 400)
     }
 
     await mkdir(UPLOAD_DIR, { recursive: true })
@@ -40,6 +41,6 @@ export async function POST(req: Request) {
     return Response.json({ url, filename: file.name })
   } catch (e) {
     console.error("Upload error:", e)
-    return Response.json({ error: "Upload failed" }, { status: 500 })
+    return apiError(ErrorCodes.INTERNAL_ERROR, "Upload failed", 500)
   }
 }
