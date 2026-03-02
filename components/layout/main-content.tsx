@@ -22,15 +22,15 @@ import { cn } from "@/lib/utils"
 import { API_ROUTES } from "@/lib/api"
 import { toast } from "sonner"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ChatView } from "./views/chat-view"
+import { ChatView } from "@/components/views/chat-view"
 
-const FilesView = lazy(() => import("./files-view").then((m) => ({ default: m.FilesView })))
-const DiscoverView = lazy(() => import("./discover-view").then((m) => ({ default: m.DiscoverView })))
-const PlaybookView = lazy(() => import("./playbook-view").then((m) => ({ default: m.PlaybookView })))
-const SettingsView = lazy(() => import("./views/settings-view").then((m) => ({ default: m.SettingsView })))
-const HistoryView = lazy(() => import("./views/history-view").then((m) => ({ default: m.HistoryView })))
-const WorkspaceView = lazy(() => import("./views/workspace-view").then((m) => ({ default: m.WorkspaceView })))
-const AssistantPickerView = lazy(() => import("./views/assistant-picker").then((m) => ({ default: m.AssistantPickerView })))
+const FilesView = lazy(() => import("@/components/views/files-view").then((m) => ({ default: m.FilesView })))
+const DiscoverView = lazy(() => import("@/components/views/discover-view").then((m) => ({ default: m.DiscoverView })))
+const PlaybookView = lazy(() => import("@/components/views/playbook-view").then((m) => ({ default: m.PlaybookView })))
+const SettingsView = lazy(() => import("@/components/views/settings-view").then((m) => ({ default: m.SettingsView })))
+const HistoryView = lazy(() => import("@/components/views/history-view").then((m) => ({ default: m.HistoryView })))
+const WorkspaceView = lazy(() => import("@/components/views/workspace-view").then((m) => ({ default: m.WorkspaceView })))
+const AssistantPickerView = lazy(() => import("@/components/views/assistant-picker").then((m) => ({ default: m.AssistantPickerView })))
 
 function ViewSkeleton() {
   return (
