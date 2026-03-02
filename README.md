@@ -51,6 +51,7 @@ AI-powered design assistant for your space and style preferences. Chat to captur
 ## Project structure
 
 - `app/` — Next.js App Router (layout, pages, API routes)
+- Upload files are served by id at `/api/uploads/[id]` without auth; protect ids if needed.
 - `components/` — React UI (chat, sidebars, views)
 - `lib/` — Contexts, API client, extraction logic, auth, DB
 - `prisma/` — Schema and seed

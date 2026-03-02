@@ -1,3 +1,8 @@
+/**
+ * Serve an uploaded file by id.
+ * GET is unauthenticated: anyone with the upload id can access the file.
+ * For private uploads, add auth or conversation ownership check.
+ */
 import { readFile } from "fs/promises"
 import path from "path"
 import { NextRequest } from "next/server"
