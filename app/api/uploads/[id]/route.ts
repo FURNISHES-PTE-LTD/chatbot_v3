@@ -1,17 +1,18 @@
 import { readFile } from "fs/promises"
 import path from "path"
 import { NextRequest } from "next/server"
+import { apiError, ErrorCodes } from "@/lib/api-error"
 import { UPLOAD_DIR, CONTENT_TYPES } from "@/lib/upload-constants"
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   if (!id) {
-    return new Response("Bad request", { status: 400 })
+    return apiError(ErrorCodes.VALIDATION_ERROR, "Bad request", 400)
   }
   const resolvedDir = path.resolve(UPLOAD_DIR)
   const filepath = path.resolve(UPLOAD_DIR, id)
   if (filepath !== resolvedDir && !filepath.startsWith(resolvedDir + path.sep)) {
-    return new Response("Bad request", { status: 400 })
+    return apiError(ErrorCodes.VALIDATION_ERROR, "Bad request", 400)
   }
   try {
     const buffer = await readFile(filepath)
@@ -25,6 +26,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       },
     })
   } catch {
-    return new Response("Not found", { status: 404 })
+    return apiError(ErrorCodes.NOT_FOUND, "Upload not found", 404)
   }
 }
