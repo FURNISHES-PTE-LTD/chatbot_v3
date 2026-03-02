@@ -61,7 +61,7 @@ function getExtractionSchema(): z.ZodObject<{ entities: z.ZodArray<z.ZodObject<E
           text: z.string(),
           field: fieldEnum,
           confidence: z.number().min(0).max(1),
-          evidenceSpans: z.array(EvidenceSpanSchema).optional(),
+          evidenceSpans: z.array(EvidenceSpanSchema),
         }),
       ),
     })
@@ -160,6 +160,7 @@ Message: "${expandedContent}"`
         text: toAdd.join(", "),
         field: "exclusion",
         confidence: negationResult.confidence,
+        evidenceSpans: [],
       })
     }
   }
