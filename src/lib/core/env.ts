@@ -1,7 +1,19 @@
 import { z } from "zod"
 
+/** Used during Vercel/CI build when DATABASE_URL is not set; db layer must not connect. */
+export const BUILD_PLACEHOLDER_DATABASE_URL = "postgresql://build-placeholder"
+
 const envSchema = z.object({
-  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+  DATABASE_URL: z
+    .string()
+    .optional()
+    .transform((v) => {
+      const val = (v ?? "").trim()
+      // Vercel/CI build: no real DB needed; use placeholder so validation passes
+      if (!val && (process.env.VERCEL === "1" || process.env.CI === "true")) return BUILD_PLACEHOLDER_DATABASE_URL
+      return val
+    })
+    .refine((v) => (v ?? "").length > 0, { message: "DATABASE_URL is required" }),
   OPENAI_API_KEY: z.string().min(1).optional(),
   OPENROUTER_API_KEY: z.string().min(1).optional(),
   NEXTAUTH_SECRET: z

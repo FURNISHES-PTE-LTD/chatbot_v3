@@ -2,9 +2,10 @@ import { createRequire } from "node:module"
 import fs from "node:fs"
 import path from "node:path"
 import { PrismaClient } from "@prisma/client"
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3"
 import { PrismaPg } from "@prisma/adapter-pg"
-import { getEnv } from "./env"
+import { BUILD_PLACEHOLDER_DATABASE_URL, getEnv } from "./env"
+
+// SQLite adapter is required only inside createSqliteClient() so Vercel (Postgres) never bundles better-sqlite3
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
 
@@ -82,7 +83,7 @@ function sqliteUrlToPath(fileUrl: string): string {
   return resolved
 }
 
-/** Creates SQLite client with Prisma 7 adapter. Uses process.env.DATABASE_URL (set fallback URL before calling when using as fallback). */
+/** Creates SQLite client with Prisma 7 adapter. Uses process.env.DATABASE_URL (set fallback URL before calling when using as fallback). Lazy-loads adapter so Vercel serverless bundle does not include better-sqlite3 when using Postgres. */
 function createSqliteClient(): PrismaClient {
   const url = process.env.DATABASE_URL || SQLITE_FALLBACK_URL
   const dbPath = sqliteUrlToPath(url)
@@ -90,6 +91,8 @@ function createSqliteClient(): PrismaClient {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true })
   }
+  // Lazy require so Vercel serverless bundle does not include better-sqlite3 when using Postgres
+  const { PrismaBetterSqlite3 } = require("@prisma/adapter-better-sqlite3") as typeof import("@prisma/adapter-better-sqlite3") // eslint-disable-line @typescript-eslint/no-require-imports
   const adapter = new PrismaBetterSqlite3({ url: dbPath })
   const { PrismaClient: SqliteClient } = loadSqliteClient()
   return new SqliteClient({ adapter })
@@ -100,12 +103,26 @@ function createPrisma(): PrismaClient {
     const env = getEnv()
     const url = env.DATABASE_URL
 
+    // Build placeholder: no DB during Vercel/CI build; throw on first use
+    if (url === BUILD_PLACEHOLDER_DATABASE_URL) {
+      return new Proxy({} as PrismaClient, {
+        // Proxy get(target, prop) signature required; we only throw
+        get() {
+          throw new Error(
+            "Database is not available during build. Set DATABASE_URL in Vercel for runtime."
+          )
+        },
+      }) as PrismaClient
+    }
+
     if (url.startsWith("file:")) {
       return createSqliteClient()
     }
 
     const adapter = new PrismaPg({ connectionString: url })
     const pgClient = new PrismaClient({ adapter })
+    // Skip SQLite fallback on Vercel (serverless has no persistent filesystem for file: DB)
+    const useSqliteFallback = process.env.VERCEL !== "1"
     let sqliteClient: PrismaClient | null = null
 
     const getSqlite = (): PrismaClient => {
@@ -126,7 +143,7 @@ function createPrisma(): PrismaClient {
             try {
               return (delegate as (...a: unknown[]) => unknown).apply(target, args)
             } catch (e) {
-              if (isConnectionError(e)) {
+              if (useSqliteFallback && isConnectionError(e)) {
                 const sqlite = getSqlite() as unknown as Record<string, unknown>
                 const fn = sqlite[prop]
                 if (typeof fn === "function") return (fn as (...a: unknown[]) => unknown).apply(sqlite, args)
@@ -144,7 +161,7 @@ function createPrisma(): PrismaClient {
               try {
                 return (fn as (...a: unknown[]) => unknown).apply(delegate, args)
               } catch (e) {
-                if (isConnectionError(e)) {
+                if (useSqliteFallback && isConnectionError(e)) {
                   const sqlite = getSqlite() as unknown as Record<string, unknown>
                   const sqliteDelegate = sqlite[prop]
                   if (sqliteDelegate && typeof (sqliteDelegate as Record<string, unknown>)[method] === "function") {
