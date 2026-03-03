@@ -133,6 +133,55 @@ export function planLayout(input: LayoutInput): LayoutOption[] {
   return options.sort((a, b) => b.score - a.score).slice(0, 3)
 }
 
+export type ParsedOpenings = {
+  doors: Position[]
+  windows: Position[]
+  closets: Position[]
+}
+
+const DEFAULT_OFFSET_INCHES = 24
+
+function parseWall(str: string): "north" | "south" | "east" | "west" | null {
+  const m = str.toLowerCase().match(/\b(north|south|east|west)\b/)
+  if (!m) return null
+  return m[1] as "north" | "south" | "east" | "west"
+}
+
+/**
+ * Parse door/window/closet positions from message text (e.g. "door on north wall", "window on the east side").
+ * Returns arrays of positions; uses default offset when only wall is mentioned.
+ */
+export function parseLayoutOpenings(text: string): ParsedOpenings {
+  const lower = text.toLowerCase()
+  const doors: Position[] = []
+  const windows: Position[] = []
+  const closets: Position[] = []
+
+  // Door: "door on X wall", "entrance on X", "door on the X side"
+  const doorRegex = /\b(door|entrance|entry)\s+(?:on\s+(?:the\s+)?)?(north|south|east|west)(?:\s+wall|\s+side)?\b/gi
+  let match: RegExpExecArray | null
+  while ((match = doorRegex.exec(lower)) !== null) {
+    const wall = parseWall(match[0])
+    if (wall) doors.push({ wall, offsetInches: DEFAULT_OFFSET_INCHES })
+  }
+
+  // Window: "window on X wall", "window on the X side"
+  const windowRegex = /\bwindow(s)?\s+(?:on\s+(?:the\s+)?)?(north|south|east|west)(?:\s+wall|\s+side)?\b/gi
+  while ((match = windowRegex.exec(lower)) !== null) {
+    const wall = parseWall(match[0])
+    if (wall) windows.push({ wall, offsetInches: DEFAULT_OFFSET_INCHES })
+  }
+
+  // Closet: "closet on X wall", "closet on the X side"
+  const closetRegex = /\bcloset(s)?\s+(?:on\s+(?:the\s+)?)?(north|south|east|west)(?:\s+wall|\s+side)?\b/gi
+  while ((match = closetRegex.exec(lower)) !== null) {
+    const wall = parseWall(match[0])
+    if (wall) closets.push({ wall, offsetInches: DEFAULT_OFFSET_INCHES })
+  }
+
+  return { doors, windows, closets }
+}
+
 /**
  * Parse room dimensions from text (e.g. "12x14 feet" or "12 ft by 14 ft").
  * Returns dimensions in inches or null.

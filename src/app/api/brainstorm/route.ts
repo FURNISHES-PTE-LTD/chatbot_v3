@@ -9,7 +9,10 @@ import {
   withFallback,
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
+  computeCost,
+  toUsageLike,
 } from "@/lib/core/openai"
+import { recordCost } from "@/lib/core/cost-logger"
 import { apiError, ErrorCodes } from "@/lib/api"
 
 const BrainstormRequestSchema = z.object({
@@ -48,7 +51,7 @@ Preferences: ${prefs}
 
 Conversation:
 ${transcript}`
-  const { text } = await withFallback(
+  const brainstormResult = await withFallback(
     () =>
       generateText({
         model: openai(OPENAI_PRIMARY_MODEL),
@@ -63,5 +66,17 @@ ${transcript}`
       })
   )
 
-  return Response.json({ summary: text.trim() })
+  if (brainstormResult.usage) {
+    const u = toUsageLike(brainstormResult.usage)
+    const costUsd = computeCost(u, OPENAI_PRIMARY_MODEL)
+    void recordCost(
+      conversationId,
+      OPENAI_PRIMARY_MODEL,
+      u.promptTokens ?? 0,
+      u.completionTokens ?? 0,
+      costUsd
+    )
+  }
+
+  return Response.json({ summary: brainstormResult.text.trim() })
 }

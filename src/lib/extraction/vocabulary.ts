@@ -9,7 +9,7 @@ export const VOCABULARY_MAP: Record<string, string> = {
   "mid century": "mid-century modern",
   "mid-century": "mid-century modern",
   scandi: "scandinavian",
-  japandi: "japanese minimalist",
+  japandi: "japandi",
   boho: "bohemian",
   "boho-chic": "bohemian",
   farmhouse: "farmhouse",
@@ -79,6 +79,35 @@ export const VOCABULARY_MAP: Record<string, string> = {
   "chaise lounge": "chaise lounge",
   etagere: "etagere",
   "accent chair": "accent chair",
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+const PLACEHOLDER_PREFIX = "\u0000V"
+const PLACEHOLDER_SUFFIX = "\u0000"
+
+/**
+ * Phrase-first expansion: replace multi-word keys (e.g. "mid century", "art deco") then single words.
+ * Uses placeholders so a replacement value (e.g. "mid-century modern") does not get re-expanded by a shorter key (e.g. "mid-century").
+ */
+export function expandMessageVocabulary(content: string): string {
+  const sortedKeys = Object.keys(VOCABULARY_MAP).sort((a, b) => b.length - a.length)
+  const placeholders: string[] = []
+  let result = content
+  for (let i = 0; i < sortedKeys.length; i++) {
+    const key = sortedKeys[i]
+    const value = VOCABULARY_MAP[key]
+    const placeholder = `${PLACEHOLDER_PREFIX}${i}${PLACEHOLDER_SUFFIX}`
+    placeholders.push(value)
+    const regex = new RegExp(`\\b${escapeRegex(key)}\\b`, "gi")
+    result = result.replace(regex, placeholder)
+  }
+  for (let i = 0; i < placeholders.length; i++) {
+    result = result.replace(new RegExp(escapeRegex(PLACEHOLDER_PREFIX + i + PLACEHOLDER_SUFFIX), "g"), placeholders[i])
+  }
+  return result
 }
 
 /**

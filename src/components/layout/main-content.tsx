@@ -168,43 +168,82 @@ export function MainContent({
           <h1 className="text-base font-semibold text-foreground mb-2">Export</h1>
           <p className="text-sm text-muted-foreground mb-4">Export your current conversation as Markdown or JSON.</p>
           {conversationId ? (
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  fetch(API_ROUTES.conversationExport(conversationId, "markdown"))
-                    .then((r) => r.blob())
-                    .then((blob) => {
-                      const a = document.createElement("a")
-                      a.href = URL.createObjectURL(blob)
-                      a.download = `conversation-${conversationId.slice(-8)}.md`
-                      a.click()
-                      URL.revokeObjectURL(a.href)
-                    })
-                    .catch(() => toast.error("Export failed"))
-                }}
-                className="px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium hover:bg-muted"
-              >
-                Download as Markdown
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  fetch(API_ROUTES.conversationExport(conversationId))
-                    .then((r) => r.json())
-                    .then((data) => {
-                      const a = document.createElement("a")
-                      a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }))
-                      a.download = `conversation-${conversationId.slice(-8)}.json`
-                      a.click()
-                      URL.revokeObjectURL(a.href)
-                    })
-                    .catch(() => toast.error("Export failed"))
-                }}
-                className="px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium hover:bg-muted"
-              >
-                Download as JSON
-              </button>
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">Full export includes conversation; design brief is preferences and summary only.</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    fetch(API_ROUTES.conversationExport(conversationId, "markdown", true))
+                      .then((r) => r.blob())
+                      .then((blob) => {
+                        const a = document.createElement("a")
+                        a.href = URL.createObjectURL(blob)
+                        a.download = `conversation-${conversationId.slice(-8)}.md`
+                        a.click()
+                        URL.revokeObjectURL(a.href)
+                      })
+                      .catch(() => toast.error("Export failed"))
+                  }}
+                  className="px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium hover:bg-muted"
+                >
+                  Markdown (full)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    fetch(API_ROUTES.conversationExport(conversationId, "markdown", false))
+                      .then((r) => r.blob())
+                      .then((blob) => {
+                        const a = document.createElement("a")
+                        a.href = URL.createObjectURL(blob)
+                        a.download = `design-brief-${conversationId.slice(-8)}.md`
+                        a.click()
+                        URL.revokeObjectURL(a.href)
+                      })
+                      .catch(() => toast.error("Export failed"))
+                  }}
+                  className="px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium hover:bg-muted"
+                >
+                  Markdown (brief only)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    fetch(API_ROUTES.conversationExport(conversationId, "json", true))
+                      .then((r) => r.json())
+                      .then((data) => {
+                        const a = document.createElement("a")
+                        a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }))
+                        a.download = `conversation-${conversationId.slice(-8)}.json`
+                        a.click()
+                        URL.revokeObjectURL(a.href)
+                      })
+                      .catch(() => toast.error("Export failed"))
+                  }}
+                  className="px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium hover:bg-muted"
+                >
+                  JSON (full)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    fetch(API_ROUTES.conversationExport(conversationId, "json", false))
+                      .then((r) => r.json())
+                      .then((data) => {
+                        const a = document.createElement("a")
+                        a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }))
+                        a.download = `design-brief-${conversationId.slice(-8)}.json`
+                        a.click()
+                        URL.revokeObjectURL(a.href)
+                      })
+                      .catch(() => toast.error("Export failed"))
+                  }}
+                  className="px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium hover:bg-muted"
+                >
+                  JSON (brief only)
+                </button>
+              </div>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">Start a conversation to export it.</p>

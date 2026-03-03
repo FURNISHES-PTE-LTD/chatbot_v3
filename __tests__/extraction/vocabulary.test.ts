@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { expandVocabulary, normalizeForMatching } from "@/lib/extraction/vocabulary"
+import { expandVocabulary, expandMessageVocabulary, normalizeForMatching } from "@/lib/extraction/vocabulary"
 
 describe("vocabulary", () => {
   describe("expandVocabulary", () => {
@@ -9,14 +9,29 @@ describe("vocabulary", () => {
     it("expands scandi to scandinavian", () => {
       expect(expandVocabulary("scandi")).toBe("scandinavian")
     })
-    it("expands japandi to japanese minimalist", () => {
-      expect(expandVocabulary("japandi")).toBe("japanese minimalist")
+    it("expands japandi to japandi (canonical term)", () => {
+      expect(expandVocabulary("japandi")).toBe("japandi")
     })
     it("returns original term when not in map", () => {
       expect(expandVocabulary("modern")).toBe("modern")
     })
     it("is case-insensitive for lookup", () => {
       expect(expandVocabulary("MCM")).toBe("mid-century modern")
+    })
+  })
+
+  describe("expandMessageVocabulary (phrase-first)", () => {
+    it("expands multi-word phrase mid century to mid-century modern", () => {
+      expect(expandMessageVocabulary("I love mid century furniture")).toBe("I love mid-century modern furniture")
+    })
+    it("expands art deco as phrase", () => {
+      expect(expandMessageVocabulary("Looking for art deco style")).toBe("Looking for art deco style")
+    })
+    it("expands sage green and accent chair", () => {
+      expect(expandMessageVocabulary("sage green walls and an accent chair")).toBe("sage green walls and an accent chair")
+    })
+    it("expands single words in message", () => {
+      expect(expandMessageVocabulary("mcm and scandi")).toBe("mid-century modern and scandinavian")
     })
   })
 

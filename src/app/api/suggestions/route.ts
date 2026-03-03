@@ -9,7 +9,10 @@ import {
   withFallback,
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
+  computeCost,
+  toUsageLike,
 } from "@/lib/core/openai"
+import { recordCost } from "@/lib/core/cost-logger"
 import { apiError, ErrorCodes } from "@/lib/api"
 
 const SuggestionsRequestSchema = z.object({
@@ -48,7 +51,7 @@ export async function POST(req: Request) {
 
 Conversation:
 ${transcript}`
-  const { object } = await withFallback(
+  const result = await withFallback(
     () =>
       generateObject({
         model: openai(OPENAI_PRIMARY_MODEL),
@@ -64,6 +67,18 @@ ${transcript}`
         maxRetries: 2,
       })
   )
+  const object = result.object
+  if (result.usage) {
+    const u = toUsageLike(result.usage)
+    const costUsd = computeCost(u, OPENAI_PRIMARY_MODEL)
+    void recordCost(
+      conversationId,
+      OPENAI_PRIMARY_MODEL,
+      u.promptTokens ?? 0,
+      u.completionTokens ?? 0,
+      costUsd
+    )
+  }
 
   return Response.json({ suggestions: object.suggestions.slice(0, 8) })
 }

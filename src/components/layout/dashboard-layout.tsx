@@ -26,8 +26,9 @@ function DashboardLayoutInner() {
   const { setShowAssistantPicker } = useWorkspaceContext()
 
   useEffect(() => {
-    apiGet<{ id: string; title: string }[]>(API_ROUTES.conversations)
-      .then((convos) => {
+    apiGet<{ conversations: { id: string; title: string }[] }>(API_ROUTES.conversations)
+      .then((data) => {
+        const convos = data.conversations ?? []
         const apiRecents: RecentItem[] = convos.map((c) => ({
           id: `convo-${c.id}`,
           label: c.title,
@@ -78,6 +79,23 @@ function DashboardLayoutInner() {
   const addRecent = useCallback((item: RecentItem) => {
     setRecents((prev) => [item, ...prev])
   }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return
+      if (e.key === "n" || e.key === "k") {
+        e.preventDefault()
+        handleItemClick("new-chat", "New Chat")
+        return
+      }
+      if (e.key === "/") {
+        e.preventDefault()
+        window.dispatchEvent(new CustomEvent("focus-chat-input"))
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [handleItemClick])
 
   const appContextValue = useMemo(
     () => ({

@@ -15,9 +15,9 @@ import {
 
 export { getWalkwayClearance, getMinBedClearance, getDeskDepth } from "./clearances"
 export { getRugSize, getDiningRugSize, getBedroomRugSize } from "./rug-sizing"
-export { planLayout, parseRoomDimensions } from "./layout-planner"
+export { planLayout, parseRoomDimensions, parseLayoutOpenings } from "./layout-planner"
 export type { PathType, DeskUsage, SofaRugConfig, BedSize }
-export type { LayoutInput, LayoutOption, FurniturePlacement, Position } from "./layout-planner"
+export type { LayoutInput, LayoutOption, FurniturePlacement, Position, ParsedOpenings } from "./layout-planner"
 
 const CLEARANCE_KEYWORDS = [
   "clearance",

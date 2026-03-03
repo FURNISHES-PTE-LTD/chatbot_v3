@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-import { MessageSquarePlus, Send, Paperclip, Lightbulb, Check, Edit3, Home, Briefcase, Moon, Sun, ThumbsUp, ThumbsDown } from "lucide-react"
+import { MessageSquarePlus, Send, Paperclip, Lightbulb, Check, Edit3, Home, Briefcase, Moon, Sun, ThumbsUp, ThumbsDown, RotateCcw } from "lucide-react"
 import { CHAT_SUGGESTION_CARDS } from "@/lib/suggestion-cards"
 import { useAppContext } from "@/lib/contexts/app-context"
 import { useChatContext } from "@/lib/contexts/chat-context"
@@ -35,18 +35,35 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
     messagesByKey,
     setMessagesByKey,
     sendMessage,
+    isStreamingForKey,
     loadConversation,
     inputValue,
     setInputValue,
     pendingMessage,
     clearPendingMessage,
-    isStreamingForKey,
     isStreaming,
     conversationIds,
     proposalsByKey,
     dismissProposals,
   } = useChatContext()
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  const isFailedAssistantMessage = (content: string) =>
+    typeof content === "string" &&
+    (content.includes("Something went wrong") || content.includes("can't reach the server") || content.includes("No response stream"))
+
+  const handleRetry = () => {
+    const list = messagesByKey[chatKey] ?? []
+    const lastIdx = list.length - 1
+    if (lastIdx < 1) return
+    const last = list[lastIdx]
+    const prev = list[lastIdx - 1]
+    if (last.role !== "assistant" || prev.role !== "user" || !isFailedAssistantMessage(last.content)) return
+    if (isStreamingForKey(chatKey)) return
+    const userContent = prev.content
+    setMessagesByKey((prevState) => ({ ...prevState, [chatKey]: list.slice(0, -2) }))
+    sendMessage(chatKey, userContent)
+  }
   const chatKey =
     currentWorkspace && currentProject
       ? `${currentWorkspace.id}-${currentProject.id}`
@@ -55,7 +72,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
         : "default"
   const isStreamingThisChat = isStreamingForKey(chatKey)
   const { setConversationId } = useCurrentConversation()
-  const { preferences } = useCurrentPreferences()
+  const { preferences, refreshPreferences } = useCurrentPreferences()
   const [reviewShownAtByKey, setReviewShownAtByKey] = useState<Record<string, number[]>>({})
   const REVIEW_INTERVAL = 10
 
@@ -65,6 +82,13 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
   const [feedbackSent, setFeedbackSent] = useState<Record<string, "positive" | "negative">>({})
   const [adjustState, setAdjustState] = useState<{ messageIndex: number; field: string; value: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const chatInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const handler = () => chatInputRef.current?.focus()
+    window.addEventListener("focus-chat-input", handler)
+    return () => window.removeEventListener("focus-chat-input", handler)
+  }, [])
   const [suggestions, setSuggestions] = useState<string[]>([
     "Mood image",
     "Floorplan",
@@ -203,7 +227,17 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                 <ChatAvatar role={isUser ? "user" : "assistant"} initial={isUser ? "Y" : "E"} size="md" />
                 <div className={cn("flex flex-col gap-1", isUser ? "items-end" : "items-start")}>
                   <ChatBubble role={isUser ? "user" : "assistant"} size="md">
-                    {isUser ? msg.content : parseHighlightedContent(msg.content)}
+                    {isUser
+                      ? msg.content
+                      : msg.content === "" && isStreamingThisChat && i === messagesToShow.length - 1
+                        ? (
+                            <span className="flex gap-1 items-center text-muted-foreground">
+                              <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:0ms]" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:150ms]" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:300ms]" />
+                            </span>
+                          )
+                        : parseHighlightedContent(msg.content)}
                   </ChatBubble>
                   {!isUser && (() => {
                     let prevUser: (typeof messagesToShow)[number] | undefined
@@ -222,6 +256,18 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                       </div>
                     )
                   })()}
+                  {!isUser && msg.content && isFailedAssistantMessage(msg.content) && (
+                    <div className="mt-1.5">
+                      <button
+                        type="button"
+                        onClick={handleRetry}
+                        disabled={isStreamingThisChat}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-card text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <RotateCcw className="w-3 h-3" /> Retry
+                      </button>
+                    </div>
+                  )}
                   {hasFeedback && (
                     <div className="flex items-center gap-1 mt-0.5">
                       <button
@@ -384,11 +430,13 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
         {proposalsByKey[chatKey]?.length > 0 && currentConvoId && (
           <ConfirmationBanner
             proposals={proposalsByKey[chatKey]}
+            onAutoDismiss={() => dismissProposals(chatKey)}
             onAccept={async (changeId) => {
               try {
                 await apiPost(API_ROUTES.conversationPreferencesConfirm(currentConvoId), { changeId })
                 dismissProposals(chatKey, changeId)
                 toast.success("Preference confirmed")
+                if (currentConvoId) await refreshPreferences(currentConvoId)
               } catch {
                 toast.error("Failed to confirm")
               }
@@ -398,6 +446,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                 await apiPost(API_ROUTES.conversationPreferencesReject(currentConvoId), { changeId })
                 dismissProposals(chatKey, changeId)
                 toast.success("Preference rejected")
+                if (currentConvoId) await refreshPreferences(currentConvoId)
               } catch {
                 toast.error("Failed to reject")
               }
@@ -450,6 +499,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
             <Paperclip className="h-4 w-4 shrink-0" />
           </button>
           <Input
+            ref={chatInputRef}
             placeholder="Ask about your design..."
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}

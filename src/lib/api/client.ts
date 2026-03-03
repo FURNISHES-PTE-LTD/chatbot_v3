@@ -19,8 +19,13 @@ export const API_ROUTES = {
   conversationInsights: (id: string) => `/api/conversations/${id}/insights`,
   conversationRecommendations: (id: string) => `/api/conversations/${id}/recommendations`,
   conversationTitle: (id: string) => `/api/conversations/${id}/title`,
-  conversationExport: (id: string, format?: string) =>
-    `/api/conversations/${id}/export${format ? `?format=${format}` : ""}`,
+  conversationExport: (id: string, format?: string, includeMessages = true) => {
+    const params = new URLSearchParams()
+    if (format) params.set("format", format)
+    if (!includeMessages) params.set("include_messages", "false")
+    const qs = params.toString()
+    return `/api/conversations/${id}/export${qs ? `?${qs}` : ""}`
+  },
   conversationEvents: (id: string) => `/api/conversations/${id}/events`,
   conversationFiles: (id: string) => `/api/conversations/${id}/files`,
   messageFeedback: (messageId: string) => `/api/messages/${messageId}/feedback`,

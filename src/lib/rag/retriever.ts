@@ -15,25 +15,43 @@ function cosineSimilarity(a: number[], b: number[]): number {
   return denom === 0 ? 0 : dot / denom
 }
 
+/** Cached design doc rows (content + embedding) to avoid full table scan on every request. Invalidated on cold start; call invalidateRagCache() after re-seeding. */
+let cachedRows: { content: string; embedding: number[] }[] | null = null
+
+/** Call after re-seeding design docs so the next retrieveRelevant uses fresh data. */
+export function invalidateRagCache(): void {
+  cachedRows = null
+}
+
+async function getDesignDocRows(): Promise<{ content: string; embedding: number[] }[]> {
+  if (cachedRows) return cachedRows
+  const rows = await prisma.designDoc.findMany({
+    select: { content: true, embedding: true },
+  })
+  const withEmbedding = rows
+    .filter((r): r is { content: string; embedding: number[] } => r.embedding != null)
+    .map((r) => ({ content: r.content, embedding: r.embedding as number[] }))
+  cachedRows = withEmbedding
+  return withEmbedding
+}
+
 /**
  * Retrieve top-K design doc chunks most relevant to the query.
- * Embeds the query, loads all chunks from DB, scores by cosine similarity.
+ * Uses in-memory cache of chunks to avoid full table scan on every request.
+ * For scale (1000+ chunks), add pgvector and use ORDER BY embedding <=> $query LIMIT $k via prisma.$queryRaw.
  */
 export async function retrieveRelevant(
   query: string,
   topK: number = 3
 ): Promise<string[]> {
-  const rows = await prisma.designDoc.findMany({
-    select: { content: true, embedding: true },
-  })
-  const withEmbedding = rows.filter((r) => r.embedding != null)
-  if (withEmbedding.length === 0) return []
+  const rows = await getDesignDocRows()
+  if (rows.length === 0) return []
 
   const queryEmbedding = await embedText(query)
-  const withScore = withEmbedding
+  const withScore = rows
     .map((r) => ({
       content: r.content,
-      score: cosineSimilarity(queryEmbedding, r.embedding as number[]),
+      score: cosineSimilarity(queryEmbedding, r.embedding),
     }))
     .sort((a, b) => b.score - a.score)
     .slice(0, topK)

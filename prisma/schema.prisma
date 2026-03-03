@@ -184,3 +184,11 @@ model CalibrationLog {
   @@index([conversationId])
   @@index([field])
 }
+
+model RateLimitEvent {
+  id        String   @id @default(cuid())
+  key       String   // e.g. client IP
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}

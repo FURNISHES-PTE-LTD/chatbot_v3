@@ -175,6 +175,14 @@ model CalibrationLog {
   @@index([field])
 }
 
+model RateLimitEvent {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}
+
 model SharedProject {
   id             String       @id @default(cuid())
   conversationId String

@@ -8,7 +8,10 @@ import {
   withFallback,
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
+  computeCost,
+  toUsageLike,
 } from "@/lib/core/openai"
+import { recordCost } from "@/lib/core/cost-logger"
 
 export async function POST(
   _req: Request,
@@ -26,7 +29,7 @@ export async function POST(
   const preview = messagesToTranscript(messages)
   const prompt = `Generate a 4-6 word title for this interior design conversation. Return ONLY the title, no quotes:\n\n${preview}`
 
-  const { text: title } = await withFallback(
+  const titleResult = await withFallback(
     () =>
       generateText({
         model: openai(OPENAI_PRIMARY_MODEL),
@@ -40,6 +43,12 @@ export async function POST(
         maxRetries: 2,
       })
   )
+  const title = titleResult.text
+  if (titleResult.usage) {
+    const u = toUsageLike(titleResult.usage)
+    const costUsd = computeCost(u, OPENAI_PRIMARY_MODEL)
+    void recordCost(id, OPENAI_PRIMARY_MODEL, u.promptTokens ?? 0, u.completionTokens ?? 0, costUsd)
+  }
 
   const trimmed = title.trim().slice(0, 60)
   await prisma.conversation.update({

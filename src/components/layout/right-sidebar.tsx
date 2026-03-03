@@ -149,15 +149,15 @@ function optionsFromField(field: DomainFieldConfig | undefined, fallback: string
 export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
   const { selectedAssistant, setShowAssistantPicker } = useWorkspaceContext()
   const { conversationId } = useCurrentConversation()
-  const { preferences, setPreferences } = useCurrentPreferences()
+  const { preferences, setPreferences, sourcesByField: sourceByField, refreshPreferences } = useCurrentPreferences()
   const [brainstormLoading, setBrainstormLoading] = useState(false)
   const [prefsLoading, setPrefsLoading] = useState(true)
   const [domainFields, setDomainFields] = useState<DomainFieldConfig[]>([])
-  const [sourceByField, setSourceByField] = useState<Record<string, string | null>>({})
   const [sourceModal, setSourceModal] = useState<{ field: string; value: string; sourceMessageId: string | null } | null>(null)
   const [editingFieldKey, setEditingFieldKey] = useState<string | null>(null)
   const [editingValue, setEditingValue] = useState("")
   const [shareLoading, setShareLoading] = useState(false)
+  const [exportLoading, setExportLoading] = useState(false)
 
   const roomType = preferences.roomType ?? null
   const budget = preferences.budget ?? null
@@ -185,20 +185,10 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
       return
     }
     setPrefsLoading(true)
-    apiGet<{ field: string; value: string; source?: string | null }[]>(API_ROUTES.conversationPreferences(conversationId))
-      .then((prefs) => {
-        const map: Record<string, string> = {}
-        const sources: Record<string, string | null> = {}
-        prefs.forEach((p) => {
-          map[p.field] = p.value
-          sources[p.field] = p.source ?? null
-        })
-        setPreferences(map)
-        setSourceByField(sources)
-      })
+    refreshPreferences(conversationId)
       .catch(() => toast.error("Failed to load preferences"))
       .finally(() => setPrefsLoading(false))
-  }, [conversationId, setPreferences])
+  }, [conversationId, setPreferences, refreshPreferences])
 
   const handlePreferenceChange = async (key: string, value: string | null) => {
     const field = KEY_TO_FIELD[key]
@@ -210,6 +200,7 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
         try {
           await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field, value })
           toast.success(`Preference updated: ${field}`)
+          await refreshPreferences(conversationId)
         } catch {
           toast.error("Failed to update preference")
         }
@@ -221,6 +212,7 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
         try {
           await apiDelete(API_ROUTES.conversationPreferences(conversationId), { field })
           toast.success("Preference removed")
+          await refreshPreferences(conversationId)
         } catch {
           toast.error("Failed to update preference")
         }
@@ -310,11 +302,14 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
             </div>
 
             {conversationId && (
-              <div className="rounded border border-border bg-muted/30 p-3">
+              <div className="rounded border border-border bg-muted/30 p-3 space-y-1.5">
                 <button
                   type="button"
+                  disabled={exportLoading}
                   onClick={() => {
-                    fetch(API_ROUTES.conversationExport(conversationId, "markdown"))
+                    if (!conversationId || exportLoading) return
+                    setExportLoading(true)
+                    fetch(API_ROUTES.conversationExport(conversationId, "markdown", true))
                       .then((r) => r.blob())
                       .then((blob) => {
                         const a = document.createElement("a")
@@ -322,12 +317,38 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
                         a.download = `conversation-${conversationId.slice(-8)}.md`
                         a.click()
                         URL.revokeObjectURL(a.href)
+                        toast.success("Export downloaded")
                       })
                       .catch(() => toast.error("Export failed"))
+                      .finally(() => setExportLoading(false))
                   }}
-                  className="w-full flex items-center justify-center gap-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Download className="w-3.5 h-3.5" /> Export
+                  {exportLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  {exportLoading ? "Exporting…" : "Export"}
+                </button>
+                <button
+                  type="button"
+                  disabled={exportLoading}
+                  onClick={() => {
+                    if (!conversationId || exportLoading) return
+                    setExportLoading(true)
+                    fetch(API_ROUTES.conversationExport(conversationId, "markdown", false))
+                      .then((r) => r.blob())
+                      .then((blob) => {
+                        const a = document.createElement("a")
+                        a.href = URL.createObjectURL(blob)
+                        a.download = `design-brief-${conversationId.slice(-8)}.md`
+                        a.click()
+                        URL.revokeObjectURL(a.href)
+                        toast.success("Design brief downloaded")
+                      })
+                      .catch(() => toast.error("Export failed"))
+                      .finally(() => setExportLoading(false))
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Export brief (no messages)
                 </button>
               </div>
             )}
@@ -349,7 +370,7 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
               isEditing={editingFieldKey === "roomType"}
               editValue={editingValue}
               onEditValueChange={setEditingValue}
-              onEditSave={async () => { if (editingFieldKey === "roomType" && conversationId) { await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field: KEY_TO_FIELD.roomType, value: editingValue }); setPreferences({ ...preferences, roomType: editingValue }); toast.success("Preference updated"); setEditingFieldKey(null) } }}
+              onEditSave={async () => { if (editingFieldKey === "roomType" && conversationId) { await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field: KEY_TO_FIELD.roomType, value: editingValue }); setPreferences({ ...preferences, roomType: editingValue }); await refreshPreferences(conversationId); toast.success("Preference updated"); setEditingFieldKey(null) } }}
               onEditCancel={() => setEditingFieldKey(null)}
               borderOnTabs
               useMutedBackground
@@ -368,7 +389,7 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
               isEditing={editingFieldKey === "budget"}
               editValue={editingValue}
               onEditValueChange={setEditingValue}
-              onEditSave={async () => { if (editingFieldKey === "budget" && conversationId) { await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field: KEY_TO_FIELD.budget, value: editingValue }); setPreferences({ ...preferences, budget: editingValue }); toast.success("Preference updated"); setEditingFieldKey(null) } }}
+              onEditSave={async () => { if (editingFieldKey === "budget" && conversationId) { await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field: KEY_TO_FIELD.budget, value: editingValue }); setPreferences({ ...preferences, budget: editingValue }); await refreshPreferences(conversationId); toast.success("Preference updated"); setEditingFieldKey(null) } }}
               onEditCancel={() => setEditingFieldKey(null)}
               borderOnTabs
             />
@@ -386,7 +407,7 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
               isEditing={editingFieldKey === "designStyle"}
               editValue={editingValue}
               onEditValueChange={setEditingValue}
-              onEditSave={async () => { if (editingFieldKey === "designStyle" && conversationId) { await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field: KEY_TO_FIELD.designStyle, value: editingValue }); setPreferences({ ...preferences, style: editingValue }); toast.success("Preference updated"); setEditingFieldKey(null) } }}
+              onEditSave={async () => { if (editingFieldKey === "designStyle" && conversationId) { await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field: KEY_TO_FIELD.designStyle, value: editingValue }); setPreferences({ ...preferences, style: editingValue }); await refreshPreferences(conversationId); toast.success("Preference updated"); setEditingFieldKey(null) } }}
               onEditCancel={() => setEditingFieldKey(null)}
               borderOnTabs
             />
@@ -404,7 +425,7 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
               isEditing={editingFieldKey === "colorPref"}
               editValue={editingValue}
               onEditValueChange={setEditingValue}
-              onEditSave={async () => { if (editingFieldKey === "colorPref" && conversationId) { await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field: KEY_TO_FIELD.colorPref, value: editingValue }); setPreferences({ ...preferences, color: editingValue }); toast.success("Preference updated"); setEditingFieldKey(null) } }}
+              onEditSave={async () => { if (editingFieldKey === "colorPref" && conversationId) { await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field: KEY_TO_FIELD.colorPref, value: editingValue }); setPreferences({ ...preferences, color: editingValue }); await refreshPreferences(conversationId); toast.success("Preference updated"); setEditingFieldKey(null) } }}
               onEditCancel={() => setEditingFieldKey(null)}
               borderOnTabs
             />
@@ -422,7 +443,7 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
               isEditing={editingFieldKey === "furnitureNeeds"}
               editValue={editingValue}
               onEditValueChange={setEditingValue}
-              onEditSave={async () => { if (editingFieldKey === "furnitureNeeds" && conversationId) { await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field: KEY_TO_FIELD.furnitureNeeds, value: editingValue }); setPreferences({ ...preferences, furniture: editingValue }); toast.success("Preference updated"); setEditingFieldKey(null) } }}
+              onEditSave={async () => { if (editingFieldKey === "furnitureNeeds" && conversationId) { await apiPatch(API_ROUTES.conversationPreferences(conversationId), { field: KEY_TO_FIELD.furnitureNeeds, value: editingValue }); setPreferences({ ...preferences, furniture: editingValue }); await refreshPreferences(conversationId); toast.success("Preference updated"); setEditingFieldKey(null) } }}
               onEditCancel={() => setEditingFieldKey(null)}
               borderOnTabs
             />

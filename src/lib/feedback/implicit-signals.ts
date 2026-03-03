@@ -14,18 +14,28 @@ export interface ImplicitSignal {
   comment: string
 }
 
+/** Preference-expressing phrases: value must appear in this context to count as restate (avoids "I saw a modern art exhibit"). */
+const PREFERENCE_EXPRESSING = /\b(want|like|prefer|love|keep|go with|my style is|looking for|into)\b/i
+
 /**
  * Detect if user is restating something already extracted (suggests they don't trust it was captured).
+ * Requires the value to appear in a preference-expressing context (e.g. near "I want", "I like"), not just anywhere.
  */
 function detectRestatePreference(
   message: string,
   currentPrefs: Record<string, string>
 ): ImplicitSignal | null {
   const lower = message.toLowerCase()
+  if (!PREFERENCE_EXPRESSING.test(lower)) return null
   for (const [field, value] of Object.entries(currentPrefs)) {
     if (!value || value.length < 3) continue
     const valueLower = value.toLowerCase()
-    if (lower.includes(valueLower)) {
+    if (!lower.includes(valueLower)) continue
+    const valueIdx = lower.indexOf(valueLower)
+    const before = lower.slice(Math.max(0, valueIdx - 60), valueIdx)
+    const after = lower.slice(valueIdx + valueLower.length, valueIdx + valueLower.length + 40)
+    const context = before + " " + after
+    if (PREFERENCE_EXPRESSING.test(context)) {
       return {
         type: "restate_preference",
         field,

@@ -18,6 +18,17 @@ export const MODEL_PRICING: Record<string, { input: number; output: number }> = 
 
 export type UsageLike = { promptTokens?: number; completionTokens?: number; totalTokens?: number }
 
+/** Normalize SDK usage (may use inputTokens/outputTokens) to UsageLike for cost tracking. */
+export function toUsageLike(usage: unknown): UsageLike {
+  if (!usage || typeof usage !== "object") return {}
+  const u = usage as Record<string, unknown>
+  return {
+    promptTokens: typeof u.promptTokens === "number" ? u.promptTokens : typeof u.inputTokens === "number" ? u.inputTokens : undefined,
+    completionTokens: typeof u.completionTokens === "number" ? u.completionTokens : typeof u.outputTokens === "number" ? u.outputTokens : undefined,
+    totalTokens: typeof u.totalTokens === "number" ? u.totalTokens : undefined,
+  }
+}
+
 /** Compute approximate USD cost for a request (Gap 7 cost tracking). */
 export function computeCost(usage: UsageLike, model: string): number {
   const pricing = MODEL_PRICING[model]

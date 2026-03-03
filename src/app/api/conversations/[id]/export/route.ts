@@ -14,7 +14,10 @@ import {
   withFallback,
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
+  computeCost,
+  toUsageLike,
 } from "@/lib/core/openai"
+import { recordCost } from "@/lib/core/cost-logger"
 
 const ExportSummarySchema = z.object({
   summary: z.string().describe("2-3 sentence project summary"),
@@ -32,6 +35,7 @@ export async function GET(
   const url = new URL(req.url)
   const format = (url.searchParams.get("format") ?? "markdown").toLowerCase()
   const validFormat = format === "json" || format === "markdown" ? format : "markdown"
+  const includeMessages = url.searchParams.get("include_messages") !== "false"
 
   const [prefs, changes, messages] = await Promise.all([
     prisma.preference.findMany({ where: { conversationId: id } }),
@@ -53,11 +57,10 @@ export async function GET(
   }))
 
   if (validFormat === "json") {
-    const body = JSON.stringify(
-      { preferences, changeHistory, messages: messagesData },
-      null,
-      2,
-    )
+    const payload = includeMessages
+      ? { preferences, changeHistory, messages: messagesData }
+      : { preferences, changeHistory }
+    const body = JSON.stringify(payload, null, 2)
     return new Response(body, {
       headers: {
         "Content-Type": "application/json",
@@ -77,7 +80,7 @@ export async function GET(
         .map((m: { role: string; content: string }) => `${m.role}: ${(m.content ?? "").slice(0, 150)}`)
         .join("\n")
       const exportPrompt = `Preferences: ${prefsStr}\nRecent messages:\n${recent}\n\nRespond with JSON: "summary" (2-3 sentences), "key_decisions" (array of short strings), "open_questions" (1-3 questions). Output only JSON.`
-      const { object } = await withFallback(
+      const exportResult = await withFallback(
         () =>
           generateObject({
             model: openai(OPENAI_PRIMARY_MODEL),
@@ -93,9 +96,15 @@ export async function GET(
             maxRetries: 1,
           })
       )
+      const object = exportResult.object
       summary = object.summary ?? ""
       key_decisions = object.key_decisions ?? []
       open_questions = object.open_questions ?? []
+      if (exportResult.usage) {
+        const u = toUsageLike(exportResult.usage)
+        const costUsd = computeCost(u, OPENAI_PRIMARY_MODEL)
+        void recordCost(id, OPENAI_PRIMARY_MODEL, u.promptTokens ?? 0, u.completionTokens ?? 0, costUsd)
+      }
     } catch {
       // leave summary/decisions/questions empty
     }
@@ -123,9 +132,11 @@ export async function GET(
   for (const c of changeHistory) {
     parts.push(`- **${c.field}**: ${c.oldValue ?? "(none)"} → ${c.newValue} (${c.changeType})\n`)
   }
-  parts.push("\n## Conversation\n\n")
-  for (const m of messagesData) {
-    parts.push(`**${m.role}**: ${(m.content || "").replace(/\n/g, " ")}\n\n`)
+  if (includeMessages) {
+    parts.push("\n## Conversation\n\n")
+    for (const m of messagesData) {
+      parts.push(`**${m.role}**: ${(m.content || "").replace(/\n/g, " ")}\n\n`)
+    }
   }
   const body = parts.join("")
   return new Response(body, {

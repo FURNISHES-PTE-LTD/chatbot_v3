@@ -1,8 +1,11 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/core/utils"
+
+const AUTO_DISMISS_SECONDS = 60
 
 export interface ProposalItem {
   field: string
@@ -15,10 +18,30 @@ interface ConfirmationBannerProps {
   proposals: ProposalItem[]
   onAccept: (changeId: string) => void
   onReject: (changeId: string) => void
+  onAutoDismiss?: () => void
   className?: string
 }
 
-export function ConfirmationBanner({ proposals, onAccept, onReject, className }: ConfirmationBannerProps) {
+export function ConfirmationBanner({ proposals, onAccept, onReject, onAutoDismiss, className }: ConfirmationBannerProps) {
+  const [countdown, setCountdown] = useState<number | null>(onAutoDismiss ? AUTO_DISMISS_SECONDS : null)
+
+  useEffect(() => {
+    if (proposals.length === 0 || !onAutoDismiss || countdown === null) return
+    if (countdown <= 0) {
+      onAutoDismiss()
+      setCountdown(null)
+      return
+    }
+    const t = setInterval(() => {
+      setCountdown((c) => (c === null ? null : c - 1))
+    }, 1000)
+    return () => clearInterval(t)
+  }, [proposals.length, onAutoDismiss, countdown])
+
+  useEffect(() => {
+    if (proposals.length > 0 && onAutoDismiss) setCountdown(AUTO_DISMISS_SECONDS)
+  }, [proposals.length, onAutoDismiss])
+
   if (proposals.length === 0) return null
   return (
     <div
@@ -29,6 +52,11 @@ export function ConfirmationBanner({ proposals, onAccept, onReject, className }:
     >
       <p className="text-sm font-medium text-amber-900 dark:text-amber-100 mb-2">
         Detected preferences — confirm or reject:
+        {countdown !== null && countdown > 0 && (
+          <span className="ml-2 text-amber-600 dark:text-amber-400 font-normal">
+            (Auto-dismiss in {countdown}s)
+          </span>
+        )}
       </p>
       <ul className="space-y-2">
         {proposals.map((p) => (

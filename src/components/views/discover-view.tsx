@@ -61,6 +61,7 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
   const [prefs, setPrefs] = useState<{ field: string; value: string; confidence: number; status: string }[]>([])
   const [insightsLoading, setInsightsLoading] = useState(true)
   const [recommendationsData, setRecommendationsData] = useState<RecommendationsData | null>(null)
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [checkedRecommendations, setCheckedRecommendations] = useState<Set<string>>(new Set())
 
@@ -92,11 +93,14 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
   useEffect(() => {
     if (!conversationId) {
       setRecommendationsData(null)
+      setRecommendationsLoading(false)
       return
     }
+    setRecommendationsLoading(true)
     apiGet<RecommendationsData>(API_ROUTES.conversationRecommendations(conversationId))
       .then((data) => setRecommendationsData(data))
       .catch(() => setRecommendationsData(null))
+      .finally(() => setRecommendationsLoading(false))
   }, [conversationId])
 
   const getFieldLabel = (fieldId: string) =>
@@ -380,7 +384,13 @@ export function DiscoverView({ onSendToChat }: DiscoverViewProps) {
           ))}
         </div>
 
-        {conversationId && recommendationsData && (recommendationsData.items?.length > 0 || Object.keys(recommendationsData.budget_breakdown ?? {}).length > 0) && (
+        {conversationId && recommendationsLoading && (
+          <div className="rounded-xl border border-border bg-card p-5 flex items-center justify-center gap-2 text-muted-foreground">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span className="text-sm">Loading recommendations…</span>
+          </div>
+        )}
+        {conversationId && !recommendationsLoading && recommendationsData && (recommendationsData.items?.length > 0 || Object.keys(recommendationsData.budget_breakdown ?? {}).length > 0) && (
           <div className="rounded-xl border border-border bg-card p-5 flex flex-col gap-4">
             <div className="flex items-center gap-2">
               <ListChecks className="w-4 h-4 text-primary" />

@@ -13,7 +13,10 @@ import {
   withFallback,
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
+  computeCost,
+  toUsageLike,
 } from "@/lib/core/openai"
+import { recordCost } from "@/lib/core/cost-logger"
 
 function trajectoryFromChanges(
   changes: Array<{ field: string }>
@@ -68,7 +71,7 @@ export async function GET(
     try {
       const recent = JSON.stringify(fields.slice(-20))
       const prompt = `Preference change history (field, type): ${recent}\nCurrent trajectory: ${trajectory}. In one short sentence, summarize the user's preference evolution. No JSON.`
-      const { text } = await withFallback(
+      const trendResult = await withFallback(
         () =>
           generateText({
             model: openai(OPENAI_PRIMARY_MODEL),
@@ -82,7 +85,12 @@ export async function GET(
             maxRetries: 1,
           })
       )
-      if (text?.trim()) summary = text.trim()
+      if (trendResult.text?.trim()) summary = trendResult.text.trim()
+      if (trendResult.usage) {
+        const u = toUsageLike(trendResult.usage)
+        const costUsd = computeCost(u, OPENAI_PRIMARY_MODEL)
+        void recordCost(id, OPENAI_PRIMARY_MODEL, u.promptTokens ?? 0, u.completionTokens ?? 0, costUsd)
+      }
     } catch {
       // keep default summary
     }

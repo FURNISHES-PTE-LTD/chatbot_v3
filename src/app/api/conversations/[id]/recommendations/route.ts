@@ -16,7 +16,10 @@ import {
   withFallback,
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
+  computeCost,
+  toUsageLike,
 } from "@/lib/core/openai"
+import { recordCost } from "@/lib/core/cost-logger"
 import { gradeRecommendationItem } from "@/lib/quality/recommendation-rubric"
 
 const RecommendationsSchema = z.object({
@@ -81,6 +84,11 @@ Return:
         })
     )
     const { object } = result
+    if (result.usage) {
+      const u = toUsageLike(result.usage)
+      const costUsd = computeCost(u, OPENAI_PRIMARY_MODEL)
+      void recordCost(id, OPENAI_PRIMARY_MODEL, u.promptTokens ?? 0, u.completionTokens ?? 0, costUsd)
+    }
     let items = (object.items ?? []).slice(0, maxItems)
     const recCfgRubric = (domainConfig.recommendations as { rubric_enabled?: boolean })?.rubric_enabled
     if (recCfgRubric && items.length > 0) {

@@ -116,6 +116,7 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
     })
       .then(async (response) => {
         const newConvoId = response.headers.get("X-Conversation-Id")
+        const userMessageId = response.headers.get("X-User-Message-Id")
         if (newConvoId) {
           setConversationIds((prev) => ({ ...prev, [key]: newConvoId }))
         }
@@ -144,27 +145,12 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
           })
           return
         }
-        const decoder = new TextDecoder()
-        let acc = ""
-        for (;;) {
-          const { done, value } = await reader.read()
-          if (done) break
-          acc += decoder.decode(value, { stream: true })
-          const content = acc
-          setMessagesByKey((prev) => {
-            const list = prev[key] || []
-            const last = list[list.length - 1]
-            if (last?.role === "assistant") {
-              return { ...prev, [key]: [...list.slice(0, -1), { ...last, content }] }
-            }
-            return { ...prev, [key]: [...list, { role: "assistant", content }] }
-          })
-        }
-        // Only fire extraction and title after successful stream read (avoid on 429/503)
+        // Fire extraction in parallel with stream (needs only user message; pass messageId for source/feedback)
         if (newConvoId) {
           apiPost<{ entities?: { text: string; field: string; confidence: number }[]; proposals?: Array<{ field: string; value: string; confidence: number; changeId: string }> }>(API_ROUTES.extract, {
             conversationId: newConvoId,
             content: userContent,
+            messageId: userMessageId ?? undefined,
           })
             .then((data) => {
               if (data.entities?.length) {
@@ -186,12 +172,28 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
             })
             .catch((err) => console.error("Extraction failed:", err))
         }
+        const decoder = new TextDecoder()
+        let acc = ""
+        for (;;) {
+          const { done, value } = await reader.read()
+          if (done) break
+          acc += decoder.decode(value, { stream: true })
+          const content = acc
+          setMessagesByKey((prev) => {
+            const list = prev[key] || []
+            const last = list[list.length - 1]
+            if (last?.role === "assistant") {
+              return { ...prev, [key]: [...list.slice(0, -1), { ...last, content }] }
+            }
+            return { ...prev, [key]: [...list, { role: "assistant", content }] }
+          })
+        }
         if (willBeSecondUserMessage && newConvoId && onConversationTitleGenerated) {
           apiPost<{ title: string }>(API_ROUTES.conversationTitle(newConvoId), {})
             .then((data) => onConversationTitleGenerated(key, newConvoId!, data.title))
             .catch((err) => console.error("Title generation failed:", err))
         }
-        // Attach last message id so UI can show feedback
+        // Attach assistant message id so UI can show feedback
         if (newConvoId) {
           apiGet<{ messages?: { id: string }[] }>(API_ROUTES.conversation(newConvoId))
             .then((data) => {

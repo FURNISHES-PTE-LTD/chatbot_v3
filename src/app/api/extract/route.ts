@@ -4,7 +4,7 @@ import { zodSchema } from "ai"
 import { z } from "zod"
 import { prisma } from "@/lib/core/db"
 import { getFieldIds } from "@/lib/domain/fields"
-import { expandVocabulary } from "@/lib/extraction/vocabulary"
+import { expandMessageVocabulary } from "@/lib/extraction/vocabulary"
 import { detectNegations, mapNegatedTermsToFields } from "@/lib/extraction/negation"
 import { extractIndirectPreferences } from "@/lib/extraction/semantic-inference"
 import { checkContradiction } from "@/lib/extraction/contradiction"
@@ -34,7 +34,10 @@ import {
   withFallback,
   OPENAI_PRIMARY_MODEL,
   OPENAI_FALLBACK_MODEL,
+  computeCost,
+  toUsageLike,
 } from "@/lib/core/openai"
+import { recordCost } from "@/lib/core/cost-logger"
 import { apiError, ErrorCodes } from "@/lib/api"
 
 const ExtractRequestSchema = z.object({
@@ -72,13 +75,6 @@ function getExtractionSchema(): z.ZodObject<{ entities: z.ZodArray<z.ZodObject<E
 }
 
 type ExtractionEntity = z.infer<ReturnType<typeof getExtractionSchema>>["entities"][number]
-
-function expandMessageVocabulary(content: string): string {
-  return content
-    .split(/\s+/)
-    .map((word) => expandVocabulary(word))
-    .join(" ")
-}
 
 export async function POST(req: Request) {
   if (!getOpenAIKey()) {
@@ -142,6 +138,18 @@ Message: "${expandedContent}"`
       })
   )
   const { object } = result
+  if (conversationId && result.usage) {
+    const usage = toUsageLike(result.usage)
+    const model = OPENAI_PRIMARY_MODEL
+    const costUsd = computeCost(usage, model)
+    void recordCost(
+      conversationId,
+      model,
+      usage.promptTokens ?? 0,
+      usage.completionTokens ?? 0,
+      costUsd
+    )
+  }
 
   let entities: Array<ExtractionEntity & { needsConfirmation?: boolean; confirmMessage?: string }> =
     [...object.entities]

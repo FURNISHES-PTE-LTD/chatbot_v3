@@ -26,7 +26,7 @@ import {
 } from "@/lib/core/openai"
 import { checkCostLimit } from "@/lib/core/cost-tracker"
 import { recordCost } from "@/lib/core/cost-logger"
-import { lookupDesignRule, planLayout, parseRoomDimensions } from "@/lib/design-rules"
+import { lookupDesignRule, planLayout, parseRoomDimensions, parseLayoutOpenings } from "@/lib/design-rules"
 import { retrieveRelevant } from "@/lib/rag/retriever"
 import { checkPolicy } from "@/lib/policy/enforcement"
 import { getResponseLengthInstruction } from "@/lib/core/response-length"
@@ -42,7 +42,7 @@ const RequestSchema = z.object({
 export async function POST(req: Request) {
   const start = Date.now()
   const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous"
-  if (!checkRateLimit(clientIp)) {
+  if (!(await checkRateLimit(clientIp))) {
     logSecurityEvent({ type: "rate_limit", clientIp })
     return apiError(ErrorCodes.RATE_LIMITED, "Too many requests. Please slow down.", 429)
   }
@@ -82,7 +82,20 @@ export async function POST(req: Request) {
     convoId = convo.id
   }
 
-  await prisma.message.create({
+  // Cost check before creating user message so 429 does not leave an orphan message (Bug 3)
+  if (convoId) {
+    const { allowed, limit } = await checkCostLimit(convoId)
+    if (!allowed) {
+      logSecurityEvent({ type: "cost_limit_hit", clientIp, conversationId: convoId })
+      return apiError(
+        ErrorCodes.RATE_LIMITED,
+        `This conversation has reached its usage limit ($${limit}). Please start a new conversation.`,
+        429
+      )
+    }
+  }
+
+  const userMessage = await prisma.message.create({
     data: { conversationId: convoId, role: "user", content: message },
   })
 
@@ -120,6 +133,7 @@ export async function POST(req: Request) {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         ...(convoId ? { "X-Conversation-Id": convoId } : {}),
+        "X-User-Message-Id": userMessage.id,
       },
     })
   }
@@ -128,18 +142,6 @@ export async function POST(req: Request) {
     maxContextTokens: convCfg.max_context_tokens,
     summarizeAfter: convCfg.summarize_after,
   })
-
-  if (convoId) {
-    const { allowed, limit } = await checkCostLimit(convoId)
-    if (!allowed) {
-      logSecurityEvent({ type: "cost_limit_hit", clientIp, conversationId: convoId })
-      return apiError(
-        ErrorCodes.RATE_LIMITED,
-        `This conversation has reached its usage limit ($${limit}). Please start a new conversation.`,
-        429
-      )
-    }
-  }
 
   let basePrompt = (domainConfig.system_prompt || "").trim() + systemSuffix
   const designRule = lookupDesignRule(message)
@@ -164,12 +166,13 @@ export async function POST(req: Request) {
       const widthInches = typeof roomW === "string" ? parseFloat(roomW) * 12 : Number(roomW) * 12
       const lengthInches = typeof roomL === "string" ? parseFloat(roomL) * 12 : Number(roomL) * 12
       if (widthInches > 0 && lengthInches > 0) {
+        const openings = parseLayoutOpenings(message)
         const options = planLayout({
           roomWidthInches: widthInches,
           roomLengthInches: lengthInches,
-          doors: [{ wall: "south", offsetInches: 0 }],
-          windows: [{ wall: "east", offsetInches: 24 }],
-          closets: [],
+          doors: openings.doors,
+          windows: openings.windows,
+          closets: openings.closets,
         })
         const layoutText = options
           .map(
@@ -252,7 +255,10 @@ export async function POST(req: Request) {
     })
 
   const response = result.toTextStreamResponse({
-    headers: convoId ? { "X-Conversation-Id": convoId } : undefined,
+    headers: {
+      ...(convoId ? { "X-Conversation-Id": convoId } : {}),
+      "X-User-Message-Id": userMessage.id,
+    },
   })
   // Sanitize stream so user never sees leaked [system]: or <|im_start|> etc.
   if (response.body) {
