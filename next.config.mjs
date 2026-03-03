@@ -2,7 +2,24 @@ import { withSentryConfig } from "@sentry/nextjs"
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ["pino"],
+  serverExternalPackages: ["pino", "better-sqlite3", "@prisma/adapter-better-sqlite3"],
+  // Keep serverless bundles under Vercel 250 MB: exclude SQLite, pnpm store, and repo metadata
+  experimental: {
+    outputFileTracingExcludes: {
+      "*": [
+        ".pnpm-store/**",
+        "node_modules/.pnpm-store/**",
+        "**/node_modules/better-sqlite3/**",
+        "**/node_modules/@prisma/adapter-better-sqlite3/**",
+        "**/node_modules/.prisma/client-sqlite/**",
+        "**/node_modules/.pnpm/*better-sqlite3*/**",
+        "**/node_modules/.pnpm/*+better-sqlite3*/**",
+        ".git/**",
+        "**/.git/**",
+        "package-lock.json",
+      ],
+    },
+  },
   images: {
     // Use next/image optimization. Add remotePatterns for external domains as needed.
     remotePatterns: [],
