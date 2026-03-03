@@ -30,7 +30,7 @@ interface ChatViewProps {
 }
 
 export function ChatView({ title, currentWorkspace = null, currentProject = null }: ChatViewProps) {
-  const { activeItem } = useAppContext()
+  const { activeItem, refreshConversationTitle } = useAppContext()
   const {
     messagesByKey,
     setMessagesByKey,
@@ -64,12 +64,15 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
     setMessagesByKey((prevState) => ({ ...prevState, [chatKey]: list.slice(0, -2) }))
     sendMessage(chatKey, userContent)
   }
+  // Prefer sidebar selection: when user clicked a conversation tab, show that conversation.
   const chatKey =
-    currentWorkspace && currentProject
-      ? `${currentWorkspace.id}-${currentProject.id}`
-      : activeItem.startsWith("recent-") || activeItem.startsWith("convo-")
-        ? activeItem
-        : "default"
+    activeItem.startsWith("recent-") || activeItem.startsWith("convo-")
+      ? activeItem
+      : currentWorkspace && currentProject
+        ? `${currentWorkspace.id}-${currentProject.id}`
+        : activeItem === "new-chat"
+          ? "new-chat"
+          : "default"
   const isStreamingThisChat = isStreamingForKey(chatKey)
   const { setConversationId } = useCurrentConversation()
   const { preferences, refreshPreferences } = useCurrentPreferences()
@@ -174,42 +177,32 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
     <div className="flex flex-col h-full min-h-0">
       <div className="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col">
         {messagesToShow.length === 0 ? (
-          activeItem === "new-chat" || activeItem.startsWith("recent-") ? (
-            <div className="flex-1 flex flex-col items-center justify-center py-8 px-4 text-center">
-              <div className="mb-4">
-                <ChatAvatar role="assistant" initial="E" size="lg" />
-              </div>
-              <h2 className="text-xl font-semibold text-foreground mb-2">How can I help you today?</h2>
-              <p className="text-sm text-muted-foreground mb-6 max-w-md">
-                Tell me about your space and I&apos;ll organize your ideas into a design brief.
-              </p>
-              <div className="grid grid-cols-2 gap-3 w-full max-w-lg">
-                {chatSuggestionCardsWithIcons.map((card) => {
-                  const Icon = card.icon
-                  return (
-                    <button
-                      type="button"
-                      key={card.id}
-                      onClick={() => handleSuggestionClick(card)}
-                      className="flex flex-col items-start gap-1.5 rounded-lg border border-border bg-card p-4 text-left transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
-                    >
-                      <Icon className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-sm font-semibold text-foreground">{card.title}</span>
-                      <span className="text-xs text-muted-foreground">{card.description}</span>
-                    </button>
-                  )
-                })}
-              </div>
+          <div className="flex-1 flex flex-col items-center justify-center py-8 px-4 text-center">
+            <div className="mb-4">
+              <ChatAvatar role="assistant" initial="E" size="lg" />
             </div>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center min-h-[280px] text-center px-4">
-              <MessageSquarePlus className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-base font-semibold text-foreground mb-2">{title}</p>
-              <p className="text-sm text-muted-foreground max-w-sm">
-                Ask about your design, furniture, or get recommendations. Type a message below to start.
-              </p>
+            <h2 className="text-xl font-semibold text-foreground mb-2">How can I help you today?</h2>
+            <p className="text-sm text-muted-foreground mb-6 max-w-md">
+              Tell me about your space and I&apos;ll organize your ideas into a design brief.
+            </p>
+            <div className="grid grid-cols-2 gap-3 w-full max-w-lg">
+              {chatSuggestionCardsWithIcons.map((card) => {
+                const Icon = card.icon
+                return (
+                  <button
+                    type="button"
+                    key={card.id}
+                    onClick={() => handleSuggestionClick(card)}
+                    className="flex flex-col items-start gap-1.5 rounded-lg border border-border bg-card p-4 text-left transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
+                  >
+                    <Icon className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-sm font-semibold text-foreground">{card.title}</span>
+                    <span className="text-xs text-muted-foreground">{card.description}</span>
+                  </button>
+                )
+              })}
             </div>
-          )
+          </div>
         ) : (
           messagesToShow.map((msg, i) => {
             const isUser = msg.role === "user"
@@ -251,8 +244,8 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                     if (!prevExtractions?.length) return null
                     const capturedLabel = prevExtractions.map((e) => `${e.field}: ${e.text}`).join(", ")
                     return (
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 border border-orange-100 text-xs text-orange-700 font-medium w-fit">
-                        <Check className="w-3 h-3 text-orange-500" /> <span className="text-orange-600 font-normal">Captured:</span> {capturedLabel}
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 border border-orange-100 text-xs font-medium w-fit">
+                        <Check className="w-3 h-3 text-orange-500 shrink-0" /> <span className="text-orange-600 font-normal">Captured:</span> <span className="text-orange-700">{capturedLabel}</span>
                       </div>
                     )
                   })()}
@@ -306,7 +299,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                     <div className="flex flex-col gap-1.5 items-end">
                       <div className="flex gap-1 flex-wrap justify-end">
                         {msg.extractions.map((e, j) => (
-                          <span key={j} className="text-[10px] text-primary bg-primary/5 rounded px-1.5 py-0.5 font-medium border border-primary/10">
+                          <span key={j} className="text-[10px] text-orange-600 bg-orange-50 rounded px-1.5 py-0.5 font-medium border border-orange-200">
                             ↗ {e.text}
                           </span>
                         ))}
@@ -436,7 +429,10 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                 await apiPost(API_ROUTES.conversationPreferencesConfirm(currentConvoId), { changeId })
                 dismissProposals(chatKey, changeId)
                 toast.success("Preference confirmed")
-                if (currentConvoId) await refreshPreferences(currentConvoId)
+                if (currentConvoId) {
+                  await refreshPreferences(currentConvoId)
+                  await refreshConversationTitle?.(currentConvoId)
+                }
               } catch {
                 toast.error("Failed to confirm")
               }
@@ -446,7 +442,10 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
                 await apiPost(API_ROUTES.conversationPreferencesReject(currentConvoId), { changeId })
                 dismissProposals(chatKey, changeId)
                 toast.success("Preference rejected")
-                if (currentConvoId) await refreshPreferences(currentConvoId)
+                if (currentConvoId) {
+                  await refreshPreferences(currentConvoId)
+                  await refreshConversationTitle?.(currentConvoId)
+                }
               } catch {
                 toast.error("Failed to reject")
               }
@@ -455,17 +454,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
         )}
       </div>
       <div className="shrink-0 flex flex-col gap-1.5 pt-1.5 border-t border-border -mx-6 px-6">
-        {isStreamingThisChat && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <ChatAvatar role="assistant" initial="E" size="sm" />
-            <span className="flex gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
-            </span>
-          </div>
-        )}
-        <p className="text-xs font-medium flex items-center gap-2">
+        <p className="text-xs font-medium flex items-center gap-2 mt-2">
           <Lightbulb className="h-3.5 w-3.5 text-primary shrink-0" />
           <span className="text-primary">Quick suggestions</span>
           <span className="text-foreground">for your project:</span>
@@ -482,7 +471,7 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-1.5 transition-all duration-200 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 mt-2">
+        <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 px-2.5 py-0.5 transition-all duration-200 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 mt-2">
           <input
             type="file"
             ref={fileInputRef}
@@ -504,13 +493,13 @@ export function ChatView({ title, currentWorkspace = null, currentProject = null
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendChatMessage()}
-            className="min-h-7 min-w-0 flex-1 border-0 bg-transparent shadow-none rounded-none px-2 text-sm text-muted-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-transparent dark:bg-transparent dark:text-muted-foreground"
+            className="min-h-[22px] py-0.5 min-w-0 flex-1 border-0 bg-transparent shadow-none rounded-none px-2 text-sm text-muted-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-transparent dark:bg-transparent dark:text-muted-foreground"
           />
           <button
             type="button"
             onClick={handleSendChatMessage}
             disabled={!inputValue.trim() || isStreamingThisChat}
-            className="shrink-0 rounded-md p-2 bg-primary text-primary-foreground transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="shrink-0 rounded-md p-1.5 bg-primary text-primary-foreground transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             <Send className="h-4 w-4" />
           </button>

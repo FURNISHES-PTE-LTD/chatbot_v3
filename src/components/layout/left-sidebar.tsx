@@ -133,11 +133,13 @@ export const LeftSidebar = memo(function LeftSidebar({ onHelpClick, isOverlay, o
                             className={cn(
                               "group flex w-full items-center gap-2 rounded-none px-5 py-1 text-left text-xs font-medium cursor-pointer",
                               "transition-all duration-200",
-                              activeItem === item.id || activeItem.startsWith(`${item.id}-`)
-                                ? "bg-accent/15 text-primary"
-                                : "text-foreground/80 hover:bg-accent/15 hover:text-foreground",
+                              item.id === "new-chat"
+                                ? "text-foreground/80 hover:bg-accent/15 hover:text-foreground"
+                                : activeItem === item.id || activeItem.startsWith(`${item.id}-`)
+                                  ? "bg-accent/15 text-primary"
+                                  : "text-foreground/80 hover:bg-accent/15 hover:text-foreground",
                             )}
-                            aria-current={activeItem === item.id || activeItem.startsWith(`${item.id}-`) ? "page" : undefined}
+                            aria-current={item.id !== "new-chat" && (activeItem === item.id || activeItem.startsWith(`${item.id}-`)) ? "page" : undefined}
                           >
                             <item.icon className="h-4 w-4 shrink-0" />
                             <span className="flex-1">{item.label}</span>
@@ -150,7 +152,7 @@ export const LeftSidebar = memo(function LeftSidebar({ onHelpClick, isOverlay, o
 
                 {/* Recents */}
                 <div>
-                  <div className="px-5 pb-0.5 pt-2">
+                  <div className="px-5 pb-0.5">
                     <SectionLabel>RECENTS</SectionLabel>
                   </div>
                   <div className="space-y-0">

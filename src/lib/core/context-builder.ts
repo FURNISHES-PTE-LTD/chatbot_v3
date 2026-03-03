@@ -3,7 +3,7 @@
  * Ported from V2 conversation.py.
  */
 import { messagesToTranscript } from "@/lib/api"
-import { getOpenAIKey, OPENAI_PRIMARY_MODEL } from "./openai"
+import { getOpenAIKey, getLLMApiBaseUrl, OPENAI_PRIMARY_MODEL } from "./openai"
 
 const CHARS_PER_TOKEN = 4
 const MAX_CONTEXT_CHARS = 3000
@@ -33,7 +33,7 @@ async function summarizeMessages(messages: MessageForContext[]): Promise<string>
       messages.map((m) => ({ role: m.role, content: (m.content || "").slice(0, 300) })),
     )
     const body = blob.length > MAX_CONTEXT_CHARS ? blob.slice(-MAX_CONTEXT_CHARS) : blob
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    const res = await fetch(`${getLLMApiBaseUrl()}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

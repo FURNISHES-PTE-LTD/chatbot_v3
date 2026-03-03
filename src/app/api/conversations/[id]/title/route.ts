@@ -1,5 +1,5 @@
 import { generateText } from "ai"
-import { openai } from "@ai-sdk/openai"
+import { openai } from "@/lib/core/openai"
 import { prisma } from "@/lib/core/db"
 import { requireConversationAccess } from "@/lib/auth"
 import { apiError, ErrorCodes } from "@/lib/api"

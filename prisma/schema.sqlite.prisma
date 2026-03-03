@@ -193,3 +193,10 @@ model SharedProject {
 
   @@index([shareId])
 }
+
+model Playbook {
+  id        String   @id @default(cuid())
+  nodes     Json
+  edges     Json
+  updatedAt DateTime @updatedAt
+}

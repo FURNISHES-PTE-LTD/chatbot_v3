@@ -1,11 +1,8 @@
 "use client"
 
-import { useTheme } from "next-themes"
 import { Switch } from "@/components/ui/switch"
-import { Button } from "@/components/ui/button"
 
 export function SettingsView() {
-  const { theme, setTheme } = useTheme()
   return (
     <div className="h-full overflow-y-auto p-6">
       <h1 className="text-xl font-semibold text-foreground mb-6">Settings</h1>
@@ -14,23 +11,6 @@ export function SettingsView() {
         <div className="space-y-4">
           <h3 className="text-sm font-semibold text-foreground pb-2 border-b border-border">Appearance</h3>
           <div className="grid gap-4">
-            <div className="flex items-center justify-between py-2 flex-wrap gap-2">
-              <div>
-                <p className="text-sm font-medium text-foreground">Theme</p>
-                <p className="text-xs text-muted-foreground">Light, system, or dark</p>
-              </div>
-              <span className="flex gap-1">
-                <Button variant={theme === "light" ? "default" : "outline"} size="sm" onClick={() => setTheme("light")}>
-                  Light
-                </Button>
-                <Button variant={theme === "system" ? "default" : "outline"} size="sm" onClick={() => setTheme("system")}>
-                  System
-                </Button>
-                <Button variant={theme === "dark" ? "default" : "outline"} size="sm" onClick={() => setTheme("dark")}>
-                  Dark
-                </Button>
-              </span>
-            </div>
             <div className="flex items-center justify-between py-2">
               <div>
                 <p className="text-sm font-medium text-foreground">Compact mode</p>

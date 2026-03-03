@@ -1,5 +1,5 @@
 import { generateText } from "ai"
-import { openai } from "@ai-sdk/openai"
+import { openai } from "@/lib/core/openai"
 import { z } from "zod"
 import { prisma } from "@/lib/core/db"
 import { messagesToTranscript } from "@/lib/api"

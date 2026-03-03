@@ -11,6 +11,8 @@ interface AppContextValue {
   removeRecent: (id: string) => void
   onItemClick: (id: string, label: string) => void
   onConversationTitleGenerated?: (oldRecentId: string, convoId: string, title: string) => void
+  /** Refresh the tab label for a conversation (e.g. after brainstorm or preferences). */
+  refreshConversationTitle?: (convoId: string) => Promise<void>
 }
 
 const AppContext = createContext<AppContextValue | null>(null)

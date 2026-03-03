@@ -1,5 +1,5 @@
 import { generateObject } from "ai"
-import { openai } from "@ai-sdk/openai"
+import { openai } from "@/lib/core/openai"
 import { zodSchema } from "ai"
 import { z } from "zod"
 import { prisma } from "@/lib/core/db"

@@ -3,7 +3,7 @@
  * Markdown includes optional LLM-generated summary, key_decisions, open_questions (Gap 8).
  */
 import { generateObject } from "ai"
-import { openai } from "@ai-sdk/openai"
+import { openai } from "@/lib/core/openai"
 import { zodSchema } from "ai"
 import { z } from "zod"
 import { prisma } from "@/lib/core/db"

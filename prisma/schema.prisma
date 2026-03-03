@@ -192,3 +192,10 @@ model RateLimitEvent {
 
   @@index([key, createdAt])
 }
+
+model Playbook {
+  id        String   @id @default(cuid())
+  nodes     Json     // WfNode[]
+  edges     Json     // WfEdge[]
+  updatedAt DateTime @updatedAt
+}

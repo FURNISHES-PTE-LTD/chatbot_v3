@@ -14,7 +14,7 @@ import { Navbar } from "./navbar"
 import { TutorialGuide } from "@/components/tutorial-guide"
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { Menu } from "lucide-react"
-import { apiGet, API_ROUTES } from "@/lib/api"
+import { apiGet, apiPost, API_ROUTES } from "@/lib/api"
 
 function DashboardLayoutInner() {
   const [activeItem, setActiveItem] = useState("new-chat")
@@ -24,6 +24,11 @@ function DashboardLayoutInner() {
   const [recents, setRecents] = useState<RecentItem[]>([])
   const [pendingChatMessage, setPendingChatMessage] = useState<string | null>(null)
   const { setShowAssistantPicker } = useWorkspaceContext()
+
+  // Always start on New Chat when the app loads (e.g. after login)
+  useEffect(() => {
+    setActiveItem("new-chat")
+  }, [])
 
   useEffect(() => {
     apiGet<{ conversations: { id: string; title: string }[] }>(API_ROUTES.conversations)
@@ -80,6 +85,24 @@ function DashboardLayoutInner() {
     setRecents((prev) => [item, ...prev])
   }, [])
 
+  const onNewConversation = useCallback((_key: string, newConvoId: string) => {
+    const newId = `convo-${newConvoId}`
+    addRecent({ id: newId, label: "New Chat" })
+    setActiveItem(newId)
+  }, [addRecent])
+
+  const refreshConversationTitle = useCallback(async (convoId: string) => {
+    try {
+      const data = await apiPost<{ title: string }>(API_ROUTES.conversationTitle(convoId), {})
+      const convoRecentId = `convo-${convoId}`
+      setRecents((prev) =>
+        prev.map((r) => (r.id === convoRecentId ? { ...r, label: data.title } : r)),
+      )
+    } catch {
+      // ignore; tab keeps current label
+    }
+  }, [])
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return
@@ -106,8 +129,9 @@ function DashboardLayoutInner() {
       removeRecent,
       onItemClick: handleItemClick,
       onConversationTitleGenerated,
+      refreshConversationTitle,
     }),
-    [activeItem, recents, addRecent, removeRecent, handleItemClick, onConversationTitleGenerated]
+    [activeItem, recents, addRecent, removeRecent, handleItemClick, onConversationTitleGenerated, refreshConversationTitle]
   )
 
   return (
@@ -119,6 +143,7 @@ function DashboardLayoutInner() {
             setPendingMessage={setPendingChatMessage}
             onClearPendingMessage={() => setPendingChatMessage(null)}
             onConversationTitleGenerated={onConversationTitleGenerated}
+            onNewConversation={onNewConversation}
           >
             <ErrorBoundary>
             <div className="flex flex-col h-screen w-full overflow-hidden bg-muted">

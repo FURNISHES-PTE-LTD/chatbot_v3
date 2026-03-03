@@ -1,5 +1,5 @@
 import { streamText } from "ai"
-import { openai } from "@ai-sdk/openai"
+import { openai } from "@/lib/core/openai"
 import { prisma } from "@/lib/core/db"
 import { z } from "zod"
 import {
@@ -99,6 +99,7 @@ export async function POST(req: Request) {
     data: { conversationId: convoId, role: "user", content: message },
   })
 
+  try {
   const domainConfig = getDomainConfig()
   const convCfg = (domainConfig.conversation ?? {}) as { max_history?: number; summarize_after?: number; max_context_tokens?: number }
   const maxHistory = convCfg.max_history ?? 50
@@ -224,12 +225,22 @@ export async function POST(req: Request) {
       ...buildStreamOptions(OPENAI_PRIMARY_MODEL),
       maxRetries: 3,
     })
-  } catch {
-    result = await streamText({
-      model: openai(OPENAI_FALLBACK_MODEL),
-      ...buildStreamOptions(OPENAI_FALLBACK_MODEL),
-      maxRetries: 2,
-    })
+  } catch (primaryErr) {
+    log({ level: "warn", event: "chat_primary_model_failed", error: String(primaryErr) })
+    try {
+      result = await streamText({
+        model: openai(OPENAI_FALLBACK_MODEL),
+        ...buildStreamOptions(OPENAI_FALLBACK_MODEL),
+        maxRetries: 2,
+      })
+    } catch (fallbackErr) {
+      log({ level: "error", event: "chat_all_models_failed", primary: String(primaryErr), fallback: String(fallbackErr) })
+      return apiError(
+        ErrorCodes.LLM_UNAVAILABLE,
+        "The AI service is temporarily unavailable. Please try again in a moment.",
+        503
+      )
+    }
   }
 
   void Promise.resolve(result.text)
@@ -269,4 +280,12 @@ export async function POST(req: Request) {
     })
   }
   return response
+  } catch (err) {
+    log({ level: "error", event: "chat_route_error", error: String(err) })
+    return apiError(
+      ErrorCodes.INTERNAL_ERROR,
+      "Something went wrong. Please try again.",
+      500
+    )
+  }
 }

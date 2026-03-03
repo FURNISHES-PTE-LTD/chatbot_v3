@@ -3,16 +3,16 @@
 import { IconButton } from "@/components/shared/icon-button"
 import { useWorkspaceContext } from "@/lib/contexts/workspace-context"
 import { useCurrentConversation } from "@/lib/contexts/current-conversation-context"
+import { useAppContext } from "@/lib/contexts/app-context"
 import { useCurrentPreferences } from "@/lib/contexts/current-preferences-context"
 import { useState, useEffect, memo } from "react"
 import { cn } from "@/lib/core/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
-import { RefreshCw, Lightbulb, Home, DollarSign, Star, ListChecks, Download, X, Loader2, Pencil, Share2 } from "lucide-react"
+import { RefreshCw, Lightbulb, Home, DollarSign, Star, ListChecks, X, Loader2, Pencil, Share2 } from "lucide-react"
 import type { DomainFieldConfig } from "@/lib/types"
 import { toast } from "sonner"
 import { apiGet, apiPost, apiPatch, apiDelete, API_ROUTES } from "@/lib/api"
-import { ProgressBar } from "@/components/preferences/progress-bar"
 import { SourceModal } from "@/components/preferences/source-modal"
 
 
@@ -54,12 +54,11 @@ function PreferenceCard({
   useMutedBackground?: boolean
 }) {
   const tabClass = borderOnTabs ? "border border-border" : ""
-  const bgClass = useMutedBackground ? "bg-muted/30" : "bg-card"
   return (
     <div
       className={cn(
-        "animate-in fade-in slide-in-from-right-2 duration-200 rounded border p-2.5 transition-all hover:border-primary/40",
-        isComplete ? `border-primary/40 ${bgClass}` : `border-border/50 ${bgClass}`,
+        "animate-in fade-in slide-in-from-right-2 duration-200 rounded border border-border/50 p-2.5 transition-all hover:border-primary/40 bg-transparent",
+        isComplete && "border-primary/40",
       )}
     >
       <div className="flex items-center gap-1.5 mb-1">
@@ -85,7 +84,7 @@ function PreferenceCard({
             </span>
           ) : (
           <span
-            className={cn("rounded-md pl-2 pr-1 py-1 text-[10px] font-bold bg-accent/15 text-primary hover:bg-accent/20 hover:text-primary transition-all duration-200 inline-flex items-center gap-1", tabClass)}
+            className={cn("rounded-md pl-2 pr-1 py-1 text-[10px] font-bold bg-muted/50 text-primary hover:bg-muted/60 hover:text-primary transition-all duration-200 inline-flex items-center gap-1", tabClass)}
           >
             <button
               type="button"
@@ -111,7 +110,7 @@ function PreferenceCard({
               type="button"
               key={opt}
               onClick={() => onChange(opt)}
-              className={cn("rounded-md px-2 py-1 text-[10px] font-medium bg-muted/80 text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-200", tabClass)}
+              className={cn("rounded-md px-2 py-1 text-[10px] font-medium bg-muted/50 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-all duration-200", tabClass)}
             >
               {opt}
             </button>
@@ -149,6 +148,7 @@ function optionsFromField(field: DomainFieldConfig | undefined, fallback: string
 export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSidebarProps = {}) {
   const { selectedAssistant, setShowAssistantPicker } = useWorkspaceContext()
   const { conversationId } = useCurrentConversation()
+  const { refreshConversationTitle } = useAppContext()
   const { preferences, setPreferences, sourcesByField: sourceByField, refreshPreferences } = useCurrentPreferences()
   const [brainstormLoading, setBrainstormLoading] = useState(false)
   const [prefsLoading, setPrefsLoading] = useState(true)
@@ -157,7 +157,6 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
   const [editingFieldKey, setEditingFieldKey] = useState<string | null>(null)
   const [editingValue, setEditingValue] = useState("")
   const [shareLoading, setShareLoading] = useState(false)
-  const [exportLoading, setExportLoading] = useState(false)
 
   const roomType = preferences.roomType ?? null
   const budget = preferences.budget ?? null
@@ -265,97 +264,36 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
                 <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
               </div>
             )}
-            {conversationId && !prefsLoading && (
-              <ProgressBar
-                completed={[roomType, budget, designStyle, colorPref, furnitureNeeds].filter(Boolean).length}
-                total={5}
-              />
-            )}
-            {/* Brainstorm card */}
-            <div className="animate-in fade-in slide-in-from-right-2 duration-200 rounded border border-border bg-muted/30 p-3">
-              <div className="flex items-center gap-1.5 mb-2">
-                <Lightbulb className="h-3.5 w-3.5 text-primary shrink-0" />
-                <h4 className="text-xs font-medium text-muted-foreground">Brainstorm for me!!</h4>
-              </div>
-              <button
-                type="button"
-                disabled={!conversationId || brainstormLoading}
-                onClick={async () => {
-                  if (!conversationId || !onSendToChat) return
-                  setBrainstormLoading(true)
-                  try {
-                    const data = await apiPost<{ summary?: string }>(API_ROUTES.brainstorm, { conversationId, preferences })
-                    if (data.summary) {
-                      onSendToChat(data.summary)
-                      toast.info("Brainstorm ideas added to chat")
-                    }
-                  } catch {
-                    toast.error("Brainstorm generation failed")
-                  } finally {
-                    setBrainstormLoading(false)
+            <button
+              type="button"
+              disabled={!conversationId || brainstormLoading}
+              onClick={async () => {
+                if (!conversationId || !onSendToChat) return
+                setBrainstormLoading(true)
+                try {
+                  const data = await apiPost<{ summary?: string }>(API_ROUTES.brainstorm, { conversationId, preferences })
+                  if (data.summary) {
+                    onSendToChat(data.summary)
+                    toast.info("Brainstorm ideas added to chat")
+                    await refreshConversationTitle?.(conversationId)
                   }
-                }}
-                className="w-full text-xs font-medium text-primary hover:bg-primary/10 rounded-md py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              >
-                {brainstormLoading ? "Thinking…" : "Generate ideas"}
-              </button>
-            </div>
+                } catch {
+                  toast.error("Brainstorm generation failed")
+                } finally {
+                  setBrainstormLoading(false)
+                }
+              }}
+              className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-primary bg-muted hover:bg-muted/80 active:bg-muted/30 rounded-md py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border border-border"
+            >
+              <Lightbulb className="h-3.5 w-3.5 shrink-0" />
+              {brainstormLoading ? "Thinking…" : "Brainstorm for me"}
+            </button>
 
-            {conversationId && (
-              <div className="rounded border border-border bg-muted/30 p-3 space-y-1.5">
-                <button
-                  type="button"
-                  disabled={exportLoading}
-                  onClick={() => {
-                    if (!conversationId || exportLoading) return
-                    setExportLoading(true)
-                    fetch(API_ROUTES.conversationExport(conversationId, "markdown", true))
-                      .then((r) => r.blob())
-                      .then((blob) => {
-                        const a = document.createElement("a")
-                        a.href = URL.createObjectURL(blob)
-                        a.download = `conversation-${conversationId.slice(-8)}.md`
-                        a.click()
-                        URL.revokeObjectURL(a.href)
-                        toast.success("Export downloaded")
-                      })
-                      .catch(() => toast.error("Export failed"))
-                      .finally(() => setExportLoading(false))
-                  }}
-                  className="w-full flex items-center justify-center gap-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {exportLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                  {exportLoading ? "Exporting…" : "Export"}
-                </button>
-                <button
-                  type="button"
-                  disabled={exportLoading}
-                  onClick={() => {
-                    if (!conversationId || exportLoading) return
-                    setExportLoading(true)
-                    fetch(API_ROUTES.conversationExport(conversationId, "markdown", false))
-                      .then((r) => r.blob())
-                      .then((blob) => {
-                        const a = document.createElement("a")
-                        a.href = URL.createObjectURL(blob)
-                        a.download = `design-brief-${conversationId.slice(-8)}.md`
-                        a.click()
-                        URL.revokeObjectURL(a.href)
-                        toast.success("Design brief downloaded")
-                      })
-                      .catch(() => toast.error("Export failed"))
-                      .finally(() => setExportLoading(false))
-                  }}
-                  className="w-full flex items-center justify-center gap-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Export brief (no messages)
-                </button>
-              </div>
-            )}
-
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60 px-0.5 pb-0.5 pt-1">
-              Preferences
-            </p>
+            <div className="!mt-1.5">
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60 px-0.5 pb-0.5 pt-1">
+                Preferences
+              </p>
+              <div className="pt-0.5 space-y-3">
             <PreferenceCard
               title="Room Type"
               description="The type of room you're designing"
@@ -375,6 +313,8 @@ export const RightSidebar = memo(function RightSidebar({ onSendToChat }: RightSi
               borderOnTabs
               useMutedBackground
             />
+              </div>
+            </div>
             <PreferenceCard
               title="Budget Range"
               description="Your budget for the project"

@@ -2,7 +2,8 @@ import { z } from "zod"
 
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-  OPENAI_API_KEY: z.string().min(1, "OPENAI_API_KEY is required").optional(),
+  OPENAI_API_KEY: z.string().min(1).optional(),
+  OPENROUTER_API_KEY: z.string().min(1).optional(),
   NEXTAUTH_SECRET: z
     .string()
     .optional()

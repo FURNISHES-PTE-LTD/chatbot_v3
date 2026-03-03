@@ -30,6 +30,7 @@ export const API_ROUTES = {
   conversationFiles: (id: string) => `/api/conversations/${id}/files`,
   messageFeedback: (messageId: string) => `/api/messages/${messageId}/feedback`,
   message: (messageId: string) => `/api/messages/${messageId}`,
+  playbook: "/api/playbook",
 } as const
 
 async function handleResponse<T>(res: Response, url?: string): Promise<T> {
@@ -67,6 +68,16 @@ export async function apiGet<T>(path: string): Promise<T> {
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  return handleResponse<T>(res, path)
+}
+
+/** PUT request with JSON body; throws on !res.ok, returns parsed JSON. */
+export async function apiPut<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   })

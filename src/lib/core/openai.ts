@@ -1,9 +1,19 @@
 /**
- * OpenAI API key access. Use from server-only (API routes, server components).
- * Gap 7: primary/fallback model names for LLM reliability.
+ * OpenAI / OpenRouter API. Use from server-only (API routes, server components).
+ * Set OPENROUTER_API_KEY or OPENAI_API_KEY in env.
  */
 
-export const OPENAI_KEY_MISSING_MESSAGE = "OPENAI_API_KEY is not configured."
+import { createOpenAI } from "@ai-sdk/openai"
+
+const openRouterKey = process.env.OPENROUTER_API_KEY?.trim() || null
+const openaiKey = process.env.OPENAI_API_KEY?.trim() || null
+
+/** Provider: OpenRouter if OPENROUTER_API_KEY is set, else OpenAI. */
+export const openai = openRouterKey
+  ? createOpenAI({ baseURL: "https://openrouter.ai/api/v1", apiKey: openRouterKey })
+  : createOpenAI({ apiKey: openaiKey ?? "" })
+
+export const OPENAI_KEY_MISSING_MESSAGE = "OPENAI_API_KEY or OPENROUTER_API_KEY is not configured."
 
 /** Primary chat/completion model (Gap 7). */
 export const OPENAI_PRIMARY_MODEL = "gpt-4o-mini"
@@ -38,10 +48,14 @@ export function computeCost(usage: UsageLike, model: string): number {
   return prompt * pricing.input + completion * pricing.output
 }
 
-/** Return the OpenAI API key or null if not set. */
+/** Return the LLM API key (OpenRouter or OpenAI) or null if not set. */
 export function getOpenAIKey(): string | null {
-  const key = process.env.OPENAI_API_KEY
-  return key?.trim() || null
+  return openRouterKey ?? openaiKey
+}
+
+/** Base URL for chat/completions (OpenRouter or OpenAI). */
+export function getLLMApiBaseUrl(): string {
+  return openRouterKey ? "https://openrouter.ai/api/v1" : "https://api.openai.com"
 }
 
 /**

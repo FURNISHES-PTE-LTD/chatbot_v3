@@ -1,17 +1,47 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { RotateCcw, RotateCw, Sparkles, Plus, Check, X, ZoomIn, ZoomOut, Loader2 } from "lucide-react"
+import {
+  RotateCcw,
+  RotateCw,
+  Sparkles,
+  Plus,
+  Check,
+  X,
+  ZoomIn,
+  ZoomOut,
+  Loader2,
+  Home,
+  Search,
+  ClipboardList,
+  HelpCircle,
+  FileText,
+  CheckCircle,
+  BookOpen,
+  PenLine,
+  Copy,
+} from "lucide-react"
 import { SectionLabel } from "@/components/shared/section-label"
-import { INIT_WF_NODES, INIT_WF_EDGES, NODE_TRACES } from "@/lib/mock-data"
+import { INIT_WF_NODES, INIT_WF_EDGES } from "@/lib/mock-data"
 import type { WfNode, WfEdge } from "@/lib/mock-data"
 import type { TraceEntry } from "@/lib/mock-data"
 import { NODE_COLORS, STATUS_COLORS, SVG_COLORS } from "@/lib/theme-colors"
 import { useCurrentConversation } from "@/lib/contexts/current-conversation-context"
 import { cn } from "@/lib/core/utils"
-import { apiGet, API_ROUTES } from "@/lib/api"
+import { apiGet, apiPut, API_ROUTES } from "@/lib/api"
 
 type NodeType = "start" | "process" | "warning" | "end" | "knowledge"
+
+const NODE_ICONS: Record<string, React.ComponentType<{ className?: string; size?: number }>> = {
+  home: Home,
+  search: Search,
+  "clipboard-list": ClipboardList,
+  "help-circle": HelpCircle,
+  "file-text": FileText,
+  "check-circle": CheckCircle,
+  "book-open": BookOpen,
+  "pen-line": PenLine,
+}
 
 function ConfBar({ value }: { value: number }) {
   const color = value >= 85 ? "bg-orange-500" : value >= 60 ? "bg-primary" : "bg-red-400"
@@ -44,6 +74,18 @@ export function PlaybookView() {
   const [zoom, setZoom] = useState(88)
   const [eventsEntries, setEventsEntries] = useState<TraceEntry[]>([])
   const [eventsLoading, setEventsLoading] = useState(true)
+  const [playbookSaving, setPlaybookSaving] = useState(false)
+
+  useEffect(() => {
+    apiGet<{ nodes: WfNode[]; edges: WfEdge[] }>(API_ROUTES.playbook)
+      .then((data) => {
+        if (Array.isArray(data.nodes) && data.nodes.length > 0) setNodes(data.nodes)
+        if (Array.isArray(data.edges)) setEdges(data.edges)
+      })
+      .catch(() => {
+        // No playbook or error: keep INIT_WF_NODES / INIT_WF_EDGES
+      })
+  }, [])
 
   useEffect(() => {
     if (!conversationId) {
@@ -91,9 +133,7 @@ export function PlaybookView() {
   const updateEdgeLabel = (id: string, label: string) =>
     setEdges((es) => es.map((e) => (e.id === id ? { ...e, label } : e)))
 
-  const trace = selectedNode
-    ? (traceFromEvents && (selectedNode === "collect" || selectedNode === "detect") ? traceFromEvents : NODE_TRACES[selectedNode])
-    : null
+  const trace = selectedNode ? traceFromEvents : null
   const selNodeData = nodes.find((n) => n.id === selectedNode)
 
   if (conversationId && eventsLoading) {
@@ -132,7 +172,7 @@ export function PlaybookView() {
                   title: "NEW NODE",
                   body: "Describe what Eva should do...",
                   type: "process",
-                  icon: "📝",
+                  icon: "pen-line",
                 },
               ])
             }
@@ -148,8 +188,27 @@ export function PlaybookView() {
           <button type="button" className="px-3 py-1.5 rounded-lg border border-border bg-background text-muted-foreground text-xs hover:bg-muted transition-colors cursor-pointer">
             Preview
           </button>
-          <button type="button" className="px-4 py-1.5 rounded-lg border-none bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors cursor-pointer">
-            Publish
+          <button
+            type="button"
+            disabled={playbookSaving}
+            onClick={async () => {
+              setPlaybookSaving(true)
+              try {
+                await apiPut(API_ROUTES.playbook, { nodes, edges })
+              } finally {
+                setPlaybookSaving(false)
+              }
+            }}
+            className="px-4 py-1.5 rounded-lg border-none bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {playbookSaving ? (
+              <span className="flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Saving…
+              </span>
+            ) : (
+              "Publish"
+            )}
           </button>
         </div>
 
@@ -262,7 +321,7 @@ export function PlaybookView() {
                     role="button"
                     tabIndex={0}
                     aria-label={node.title}
-                    className="cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                    className="cursor-pointer focus:outline-none"
                     onClick={() => setSelectedNode(isSel ? null : node.id)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
@@ -297,9 +356,14 @@ export function PlaybookView() {
                     />
                     <rect x={node.x} y={node.y} width={node.w} height={30} rx={10} fill={c.titleBg} />
                     <rect x={node.x} y={node.y + 18} width={node.w} height={12} fill={c.titleBg} />
-                    <text x={node.x + 14} y={node.y + 19} fontSize={12}>
-                      {node.icon}
-                    </text>
+                    <foreignObject x={node.x + 10} y={node.y + 6} width={20} height={20}>
+                      <div className="flex items-center justify-center w-5 h-5 text-current" style={{ color: c.titleC }}>
+                        {(() => {
+                          const IconComponent = NODE_ICONS[node.icon] ?? FileText
+                          return IconComponent ? <IconComponent size={14} className="shrink-0" /> : null
+                        })()}
+                      </div>
+                    </foreignObject>
                     <text
                       x={node.x + 32}
                       y={node.y + 20}
@@ -369,9 +433,11 @@ export function PlaybookView() {
                             stroke={SVG_COLORS.edge}
                             strokeWidth={1}
                           />
-                          <text x={node.x + node.w + 19} y={node.y + 27} textAnchor="middle" fontSize={12} fill="#7A756E">
-                            ⧉
-                          </text>
+                          <foreignObject x={node.x + node.w + 10} y={node.y + 14} width={18} height={18}>
+                            <div className="flex items-center justify-center w-full h-full text-[#7A756E]">
+                              <Copy size={14} />
+                            </div>
+                          </foreignObject>
                         </g>
                         <g
                           role="button"
@@ -393,9 +459,11 @@ export function PlaybookView() {
                             stroke="#FECACA"
                             strokeWidth={1}
                           />
-                          <text x={node.x + node.w + 19} y={node.y + 59} textAnchor="middle" fontSize={11} fill="#EF4444">
-                            ✕
-                          </text>
+                          <foreignObject x={node.x + node.w + 10} y={node.y + 46} width={18} height={18}>
+                            <div className="flex items-center justify-center w-full h-full text-[#EF4444]">
+                              <X size={14} />
+                            </div>
+                          </foreignObject>
                         </g>
                       </g>
                     )}

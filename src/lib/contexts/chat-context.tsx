@@ -36,13 +36,16 @@ interface ChatProviderProps {
   setPendingMessage?: (value: string | null) => void
   onClearPendingMessage?: () => void
   onConversationTitleGenerated?: (oldRecentId: string, convoId: string, title: string) => void
+  /** Called when user sends first message from new-chat; parent should add to recents and set active item to convo-{id}. */
+  onNewConversation?: (key: string, convoId: string) => void
 }
 
-export function ChatProvider({ children, pendingMessage: controlledPending, setPendingMessage: controlledSetPending, onClearPendingMessage, onConversationTitleGenerated }: ChatProviderProps) {
+export function ChatProvider({ children, pendingMessage: controlledPending, setPendingMessage: controlledSetPending, onClearPendingMessage, onConversationTitleGenerated, onNewConversation }: ChatProviderProps) {
   const [messagesByKey, setMessagesByKey] = useState<Record<string, ChatMessage[]>>({})
   const messagesByKeyRef = useRef(messagesByKey)
   messagesByKeyRef.current = messagesByKey
   const abortControllerRef = useRef<AbortController | null>(null)
+  const streamingKeyRef = useRef<string | null>(null)
   const [inputValue, setInputValue] = useState("")
   const [internalPending, setInternalPending] = useState<string | null>(null)
   const [streamingKeys, setStreamingKeys] = useState<Set<string>>(new Set())
@@ -94,9 +97,6 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
     setMessagesByKey((prev) => ({ ...prev, [key]: [...(prev[key] || []), placeholder] }))
     setStreamingKeys((prev) => new Set(prev).add(key))
 
-    const userCountAfterThis = (messagesByKeyRef.current[key] || []).filter((m) => m.role === "user").length + 1
-    const willBeSecondUserMessage = userCountAfterThis === 2
-
     const body: { conversationId?: string; message: string; preferences?: Record<string, string> } = {
       message: userContent,
       preferences: currentPreferences && Object.keys(currentPreferences).length > 0 ? currentPreferences : undefined,
@@ -115,33 +115,55 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
       signal: controller.signal,
     })
       .then(async (response) => {
+        streamingKeyRef.current = key
         const newConvoId = response.headers.get("X-Conversation-Id")
         const userMessageId = response.headers.get("X-User-Message-Id")
+        let effectiveKey = key
         if (newConvoId) {
-          setConversationIds((prev) => ({ ...prev, [key]: newConvoId }))
+          // When this is a new conversation (key not already convo-*), migrate to convo-xxx and add to Recents
+          if (!key.startsWith("convo-") && onNewConversation) {
+            effectiveKey = `convo-${newConvoId}`
+            setMessagesByKey((prev) => ({ ...prev, [effectiveKey]: prev[key] ?? [] }))
+            setConversationIds((prev) => ({ ...prev, [effectiveKey]: newConvoId }))
+            setStreamingKeys((prev) => {
+              const next = new Set(prev)
+              next.delete(key)
+              next.add(effectiveKey)
+              return next
+            })
+            setProposalsByKey((prev) => (prev[key] ? { ...prev, [effectiveKey]: prev[key] } : prev))
+            streamingKeyRef.current = effectiveKey
+            onNewConversation(key, newConvoId)
+          } else {
+            setConversationIds((prev) => ({ ...prev, [key]: newConvoId }))
+          }
         }
         if (!response.ok) {
           const err = await response.json().catch(() => ({ error: response.statusText }))
-          const errText = (err as { error?: string }).error ?? "Something went wrong. Try again."
+          const errBody = err as { error?: string | { message?: string } }
+          const errText =
+            typeof errBody.error === "string"
+              ? errBody.error
+              : errBody.error?.message ?? "Something went wrong. Try again."
           setMessagesByKey((prev) => {
-            const list = prev[key] || []
+            const list = prev[effectiveKey] || []
             const last = list[list.length - 1]
             if (last?.role === "assistant") {
-              return { ...prev, [key]: [...list.slice(0, -1), { ...last, content: errText }] }
+              return { ...prev, [effectiveKey]: [...list.slice(0, -1), { ...last, content: errText }] }
             }
-            return { ...prev, [key]: [...list, { role: "assistant", content: errText }] }
+            return { ...prev, [effectiveKey]: [...list, { role: "assistant", content: errText }] }
           })
           return
         }
         const reader = response.body?.getReader()
         if (!reader) {
           setMessagesByKey((prev) => {
-            const list = prev[key] || []
+            const list = prev[effectiveKey] || []
             const last = list[list.length - 1]
             if (last?.role === "assistant") {
-              return { ...prev, [key]: [...list.slice(0, -1), { ...last, content: "No response stream." }] }
+              return { ...prev, [effectiveKey]: [...list.slice(0, -1), { ...last, content: "No response stream." }] }
             }
-            return { ...prev, [key]: [...list, { role: "assistant", content: "No response stream." }] }
+            return { ...prev, [effectiveKey]: [...list, { role: "assistant", content: "No response stream." }] }
           })
           return
         }
@@ -158,16 +180,16 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
                   toast.success(`Captured: ${e.field} → ${e.text}`)
                 })
                 setMessagesByKey((prev) => {
-                  const list = prev[key] || []
+                  const list = prev[effectiveKey] || []
                   const lastUserIdx = list.map((m) => m.role).lastIndexOf("user")
                   if (lastUserIdx < 0) return prev
                   const copy = [...list]
                   copy[lastUserIdx] = { ...copy[lastUserIdx], extractions: data.entities }
-                  return { ...prev, [key]: copy }
+                  return { ...prev, [effectiveKey]: copy }
                 })
               }
               if (data.proposals?.length) {
-                setProposalsByKey((prev) => ({ ...prev, [key]: data.proposals! }))
+                setProposalsByKey((prev) => ({ ...prev, [effectiveKey]: data.proposals! }))
               }
             })
             .catch((err) => console.error("Extraction failed:", err))
@@ -180,17 +202,17 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
           acc += decoder.decode(value, { stream: true })
           const content = acc
           setMessagesByKey((prev) => {
-            const list = prev[key] || []
+            const list = prev[effectiveKey] || []
             const last = list[list.length - 1]
             if (last?.role === "assistant") {
-              return { ...prev, [key]: [...list.slice(0, -1), { ...last, content }] }
+              return { ...prev, [effectiveKey]: [...list.slice(0, -1), { ...last, content }] }
             }
-            return { ...prev, [key]: [...list, { role: "assistant", content }] }
+            return { ...prev, [effectiveKey]: [...list, { role: "assistant", content }] }
           })
         }
-        if (willBeSecondUserMessage && newConvoId && onConversationTitleGenerated) {
+        if (newConvoId && onConversationTitleGenerated) {
           apiPost<{ title: string }>(API_ROUTES.conversationTitle(newConvoId), {})
-            .then((data) => onConversationTitleGenerated(key, newConvoId!, data.title))
+            .then((data) => onConversationTitleGenerated(effectiveKey, newConvoId!, data.title))
             .catch((err) => console.error("Title generation failed:", err))
         }
         // Attach assistant message id so UI can show feedback
@@ -201,10 +223,10 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
               const last = list?.length ? list[list.length - 1] : null
               if (last?.id) {
                 setMessagesByKey((prev) => {
-                  const msgs = prev[key] || []
+                  const msgs = prev[effectiveKey] || []
                   const lastIdx = msgs.length - 1
                   if (lastIdx >= 0 && msgs[lastIdx].role === "assistant") {
-                    return { ...prev, [key]: [...msgs.slice(0, lastIdx), { ...msgs[lastIdx], id: last.id }] }
+                    return { ...prev, [effectiveKey]: [...msgs.slice(0, lastIdx), { ...msgs[lastIdx], id: last.id }] }
                   }
                   return prev
                 })
@@ -229,7 +251,7 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
           return { ...prev, [key]: [...list, { role: "assistant", content: msg }] }
         })
       })
-      .finally(() => setStreamingKeys((prev) => { const next = new Set(prev); next.delete(key); return next }))
+      .finally(() => setStreamingKeys((prev) => { const next = new Set(prev); const k = streamingKeyRef.current; if (k) next.delete(k); streamingKeyRef.current = null; return next }))
   }, [conversationIds, onConversationTitleGenerated, currentPreferences])
 
   const loadConversation = useCallback(async (chatKey: string, dbConversationId: string) => {
