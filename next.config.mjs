@@ -3,7 +3,9 @@ import { withSentryConfig } from "@sentry/nextjs"
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   serverExternalPackages: ["pino", "better-sqlite3", "@prisma/adapter-better-sqlite3"],
-  // Keep serverless bundles under Vercel 250 MB: exclude SQLite, pnpm store, and repo metadata
+  // Keep serverless bundles under Vercel 250 MB: exclude SQLite-only deps and repo metadata.
+  // Do NOT exclude .pnpm paths containing "better-sqlite3" in the name — that folder also
+  // holds @prisma+client (Postgres), which is required at runtime.
   experimental: {
     outputFileTracingExcludes: {
       "*": [
@@ -12,8 +14,6 @@ const nextConfig = {
         "**/node_modules/better-sqlite3/**",
         "**/node_modules/@prisma/adapter-better-sqlite3/**",
         "**/node_modules/.prisma/client-sqlite/**",
-        "**/node_modules/.pnpm/*better-sqlite3*/**",
-        "**/node_modules/.pnpm/*+better-sqlite3*/**",
         ".git/**",
         "**/.git/**",
         "package-lock.json",
