@@ -83,6 +83,9 @@ function sqliteUrlToPath(fileUrl: string): string {
   return resolved
 }
 
+const SQLITE_BINDINGS_HINT =
+  "better-sqlite3 native bindings are missing (pnpm 10+ blocks install scripts by default). Run: pnpm install (with pnpm.onlyBuiltDependencies in package.json), then pnpm run rebuild:native — or use PostgreSQL (DATABASE_URL=postgresql://...)."
+
 /** Creates SQLite client with Prisma 7 adapter. Uses process.env.DATABASE_URL (set fallback URL before calling when using as fallback). Lazy-loads adapter so Vercel serverless bundle does not include better-sqlite3 when using Postgres. */
 function createSqliteClient(): PrismaClient {
   const url = process.env.DATABASE_URL || SQLITE_FALLBACK_URL
@@ -91,11 +94,19 @@ function createSqliteClient(): PrismaClient {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true })
   }
-  // Lazy require so Vercel serverless bundle does not include better-sqlite3 when using Postgres
-  const { PrismaBetterSqlite3 } = require("@prisma/adapter-better-sqlite3") as typeof import("@prisma/adapter-better-sqlite3") // eslint-disable-line @typescript-eslint/no-require-imports
-  const adapter = new PrismaBetterSqlite3({ url: dbPath })
-  const { PrismaClient: SqliteClient } = loadSqliteClient()
-  return new SqliteClient({ adapter })
+  try {
+    // Lazy require so Vercel serverless bundle does not include better-sqlite3 when using Postgres
+    const { PrismaBetterSqlite3 } = require("@prisma/adapter-better-sqlite3") as typeof import("@prisma/adapter-better-sqlite3") // eslint-disable-line @typescript-eslint/no-require-imports
+    const adapter = new PrismaBetterSqlite3({ url: dbPath })
+    const { PrismaClient: SqliteClient } = loadSqliteClient()
+    return new SqliteClient({ adapter })
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (/bindings|better_sqlite3\.node|Could not locate/i.test(msg)) {
+      throw new Error(`${SQLITE_BINDINGS_HINT} Original: ${msg}`)
+    }
+    throw e
+  }
 }
 
 function createPrisma(): PrismaClient {
