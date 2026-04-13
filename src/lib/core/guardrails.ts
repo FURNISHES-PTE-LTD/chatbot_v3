@@ -1,6 +1,8 @@
 import { getDomainConfig } from "@/lib/domain/config"
 import { getOpenAIKey } from "./openai"
 
+export { sanitizeOutput } from "./sanitize-output"
+
 const MAX_MESSAGE_LENGTH = 10000
 
 /** Patterns that may indicate prompt injection (case-insensitive). Ported from V2. */
@@ -78,81 +80,6 @@ export async function checkModeration(
   } catch {
     return { safe: true }
   }
-}
-
-/** Patterns that indicate leaked prompt/system text in LLM output. Ported from V2. */
-const PROMPT_LEAK_PATTERNS = [
-  /\[?system\]?\s*:.*$/im,
-  /<\|im_start\|>.*$/im,
-  /<\|im_end\|>/g,
-  /Human\s*:.*$/im,
-  /Assistant\s*:.*$/im,
-  /^(system|human|assistant)\s*:\s*/im,
-]
-
-const ROLE_LINE = /^(system|human|assistant)\s*:\s*/i
-const MAX_OUTPUT_LENGTH = 10000
-
-/**
- * Sanitize LLM output: strip prompt leak markers and truncate to max length.
- * Ported from V2 check_output().
- */
-export function sanitizeOutput(text: string): string {
-  if (typeof text !== "string" || !text.trim()) return ""
-  const lines = text.split("\n")
-  const out: string[] = []
-  for (const line of lines) {
-    let stripped = line
-    for (const pat of PROMPT_LEAK_PATTERNS) {
-      stripped = stripped.replace(pat, "")
-    }
-    stripped = stripped.trim()
-    if (stripped && !ROLE_LINE.test(stripped)) out.push(line)
-  }
-  let result = out.join("\n").trim() || text.trim()
-  if (result.length > MAX_OUTPUT_LENGTH) {
-    result = result.slice(0, MAX_OUTPUT_LENGTH - 3).trimEnd() + "..."
-  }
-  return result
-}
-
-/** Strip a single line of prompt-leak content; return empty if line should be dropped. */
-function stripLine(line: string): string {
-  let stripped = line
-  for (const pat of PROMPT_LEAK_PATTERNS) {
-    stripped = stripped.replace(pat, "")
-  }
-  stripped = stripped.trim()
-  if (!stripped || ROLE_LINE.test(stripped)) return ""
-  return stripped
-}
-
-/**
- * Create a TransformStream that sanitizes streamed LLM output line-by-line
- * so the user never sees leaked [system]: or <|im_start|> etc.
- */
-export function createSanitizeStreamTransform(): TransformStream<Uint8Array, Uint8Array> {
-  const encoder = new TextEncoder()
-  const decoder = new TextDecoder()
-  let buffer = ""
-
-  return new TransformStream({
-    transform(chunk, controller) {
-      buffer += decoder.decode(chunk, { stream: true })
-      const lines = buffer.split("\n")
-      buffer = lines.pop() ?? ""
-      for (const line of lines) {
-        const out = stripLine(line)
-        if (out) controller.enqueue(encoder.encode(out + "\n"))
-      }
-    },
-    flush(controller) {
-      if (buffer) {
-        const out = stripLine(buffer)
-        if (out) controller.enqueue(encoder.encode(out))
-      }
-    },
-  })
 }
 
 export function buildSafeSystemPrompt(base: string): string {

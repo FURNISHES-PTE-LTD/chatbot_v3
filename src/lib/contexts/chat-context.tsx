@@ -6,6 +6,7 @@ import type { ChatMessage } from "@/lib/types"
 import { AI_RESPONSE_DELAY_MS } from "@/lib/core/constants"
 import { useCurrentPreferences } from "@/lib/contexts/current-preferences-context"
 import { apiGet, apiPost, API_ROUTES } from "@/lib/api"
+import { sanitizeOutput } from "@/lib/core/sanitize-output"
 
 interface ChatContextValue {
   messagesByKey: Record<string, ChatMessage[]>
@@ -200,7 +201,7 @@ export function ChatProvider({ children, pendingMessage: controlledPending, setP
           const { done, value } = await reader.read()
           if (done) break
           acc += decoder.decode(value, { stream: true })
-          const content = acc
+          const content = sanitizeOutput(acc)
           setMessagesByKey((prev) => {
             const list = prev[effectiveKey] || []
             const last = list[list.length - 1]

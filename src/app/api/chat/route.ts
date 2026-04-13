@@ -5,10 +5,9 @@ import { z } from "zod"
 import {
   validateInput,
   buildSafeSystemPrompt,
-  sanitizeOutput,
   checkModeration,
-  createSanitizeStreamTransform,
 } from "@/lib/core/guardrails"
+import { sanitizeOutput } from "@/lib/core/sanitize-output"
 import { checkRateLimit } from "@/lib/core/rate-limit"
 import { log } from "@/lib/core/logger"
 import { getServerSession } from "next-auth"
@@ -271,14 +270,8 @@ export async function POST(req: Request) {
       "X-User-Message-Id": userMessage.id,
     },
   })
-  // Sanitize stream so user never sees leaked [system]: or <|im_start|> etc.
-  if (response.body) {
-    const sanitizedBody = response.body.pipeThrough(createSanitizeStreamTransform())
-    return new Response(sanitizedBody, {
-      status: response.status,
-      headers: response.headers,
-    })
-  }
+  // Sanitization for display: client applies sanitizeOutput while reading the stream (line-buffered
+  // TransformStream would hide tokens until newline/end). Persisted assistant text is sanitized below.
   return response
   } catch (err) {
     log({ level: "error", event: "chat_route_error", error: String(err) })
